@@ -33,7 +33,7 @@ var defaultFunctions = map[string]FunctionDefinition{
 	},
 }
 
-func (r *Registry) registerDefaultFunctions() {
+func registerDefaultFunctions(r *Registry) {
 	maps.Copy(r.functions, defaultFunctions)
 }
 

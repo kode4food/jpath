@@ -62,7 +62,7 @@ func NewRegistry() *Registry {
 	res := &Registry{
 		functions: map[string]FunctionDefinition{},
 	}
-	res.registerDefaultFunctions()
+	registerDefaultFunctions(res)
 	return res
 }
 
@@ -83,7 +83,7 @@ func (r *Registry) RegisterFunction(name string, def FunctionDefinition) error {
 	}
 	if r.functions == nil {
 		r.functions = map[string]FunctionDefinition{}
-		r.registerDefaultFunctions()
+		registerDefaultFunctions(r)
 	}
 	if _, ok := r.functions[name]; ok {
 		return fmt.Errorf("%w: %s", ErrFunctionExists, name)

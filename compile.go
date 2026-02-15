@@ -2,41 +2,10 @@ package jpath
 
 import "fmt"
 
-type (
-	// Path is an executable VM program
-	Path struct {
-		// Code stores VM instructions
-		Code []Instruction
-		// Constants stores literal values referenced by instructions
-		Constants []any
-	}
-
-	// Compiler compiles parsed JSONPath syntax trees into runnable programs
-	Compiler struct {
-		registry *Registry
-	}
-
-	// Instruction is a single VM instruction
-	Instruction struct {
-		// Op identifies the operation
-		Op Opcode
-		// Arg stores an operand index or immediate value for Op
-		Arg int
-	}
-
-	// Opcode identifies a VM operation
-	Opcode uint8
-
-	// SlicePlan stores precompiled bounds for slice selection
-	SlicePlan struct {
-		// Start is the raw start bound from the parsed selector
-		Start int
-		// End is the raw end bound from the parsed selector
-		End int
-		// Step is the raw step bound from the parsed selector
-		Step int
-	}
-)
+// Compiler compiles parsed JSONPath syntax trees into runnable programs
+type Compiler struct {
+	registry *Registry
+}
 
 // NewCompiler creates a new Compiler
 func NewCompiler() *Compiler {
@@ -46,11 +15,6 @@ func NewCompiler() *Compiler {
 // Compile compiles a parsed PathExpr into an executable Path
 func (c *Compiler) Compile(path PathExpr) (Path, error) {
 	return compilePath(path, c.registry)
-}
-
-func (p *Path) addConst(value any) int {
-	p.Constants = append(p.Constants, value)
-	return len(p.Constants) - 1
 }
 
 func compilePath(path PathExpr, registry *Registry) (Path, error) {

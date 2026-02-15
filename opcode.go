@@ -1,5 +1,8 @@
 package jpath
 
+// Opcode identifies a VM operation
+type Opcode uint8
+
 //go:generate stringer -type=Opcode -linecomment
 const (
 	// Slice tag decode

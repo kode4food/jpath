@@ -81,3 +81,55 @@ const (
 func (p PathExpr) String() string {
 	return fmt.Sprintf("path(segments=%d)", len(p.Segments))
 }
+
+func (l LiteralExpr) eval(_ *evalCtx) evalValue {
+	return scalarValue(l.Value)
+}
+
+func (p PathValueExpr) eval(ctx *evalCtx) evalValue {
+	path, err := makePath(p.Path, NewRegistry())
+	if err != nil {
+		return nodesValue(nil)
+	}
+	base := ctx.current
+	if p.Absolute {
+		base = ctx.root
+	}
+	return nodesValue(path.Query(base))
+}
+
+func (u UnaryExpr) eval(ctx *evalCtx) evalValue {
+	v := u.Expr.eval(ctx)
+	if u.Op == "!" {
+		return scalarValue(!toBool(v))
+	}
+	return scalarValue(nil)
+}
+
+func (b BinaryExpr) eval(ctx *evalCtx) evalValue {
+	if b.Op == "&&" {
+		left := b.Left.eval(ctx)
+		if !toBool(left) {
+			return scalarValue(false)
+		}
+		return scalarValue(toBool(b.Right.eval(ctx)))
+	}
+	if b.Op == "||" {
+		left := b.Left.eval(ctx)
+		if toBool(left) {
+			return scalarValue(true)
+		}
+		return scalarValue(toBool(b.Right.eval(ctx)))
+	}
+	left := b.Left.eval(ctx)
+	right := b.Right.eval(ctx)
+	return scalarValue(compareValues(left, right, b.Op))
+}
+
+func (f FuncExpr) eval(ctx *evalCtx) evalValue {
+	def, ok := builtinFunction(f.Name)
+	if !ok {
+		return scalarValue(nil)
+	}
+	return fromFunctionValue(def.Eval(evalFunctionArgs(f.Args, ctx)))
+}
