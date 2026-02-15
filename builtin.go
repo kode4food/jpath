@@ -115,8 +115,8 @@ func evalLength(args []FunctionValue) FunctionValue {
 	return evalLengthValue(v.Scalar)
 }
 
-func evalLengthValue(v any) FunctionValue {
-	switch raw := v.(type) {
+func evalLengthValue(value any) FunctionValue {
+	switch raw := value.(type) {
 	case string:
 		return scalarFunctionValue(float64(len([]rune(raw))))
 	case []any:
@@ -194,6 +194,6 @@ func singularFunctionValue(v FunctionValue) (any, bool) {
 	return v.Scalar, true
 }
 
-func scalarFunctionValue(v any) FunctionValue {
-	return FunctionValue{Scalar: v}
+func scalarFunctionValue(value any) FunctionValue {
+	return FunctionValue{Scalar: value}
 }

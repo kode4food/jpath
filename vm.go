@@ -36,11 +36,11 @@ func (r *Runnable) Run(document any) []any {
 	return current
 }
 
-func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
+func (r *Runnable) selectNode(out []any, node, root any, i Instruction) []any {
 	switch i.Op {
 	case OpSelectName:
 		name := r.Constants[i.Arg].(string)
-		if obj, ok := n.(map[string]any); ok {
+		if obj, ok := node.(map[string]any); ok {
 			if val, ok := obj[name]; ok {
 				out = append(out, val)
 			}
@@ -48,7 +48,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return out
 
 	case OpSelectIndex:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok {
 			return out
 		}
@@ -60,16 +60,16 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return out
 
 	case OpSelectWildcard:
-		return appendWildcard(out, n)
+		return appendWildcard(out, node)
 
 	case OpSelectArrayAll:
-		if arr, ok := n.([]any); ok {
+		if arr, ok := node.([]any); ok {
 			out = append(out, arr...)
 		}
 		return out
 
 	case OpSelectSliceF00:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -77,7 +77,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF00(out, arr, plan.Step)
 
 	case OpSelectSliceF10P:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -85,7 +85,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF10P(out, arr, plan.Start, plan.Step)
 
 	case OpSelectSliceF10N:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -93,7 +93,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF10N(out, arr, plan.Start, plan.Step)
 
 	case OpSelectSliceF01P:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -101,7 +101,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF01P(out, arr, plan.End, plan.Step)
 
 	case OpSelectSliceF01N:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -109,7 +109,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF01N(out, arr, plan.End, plan.Step)
 
 	case OpSelectSliceF11PP:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -117,7 +117,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF11PP(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceF11PN:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -125,7 +125,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF11PN(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceF11NP:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -133,7 +133,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF11NP(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceF11NN:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -141,7 +141,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceF11NN(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceB00:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -149,7 +149,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB00(out, arr, plan.Step)
 
 	case OpSelectSliceB10P:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -157,7 +157,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB10P(out, arr, plan.Start, plan.Step)
 
 	case OpSelectSliceB10N:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -165,7 +165,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB10N(out, arr, plan.Start, plan.Step)
 
 	case OpSelectSliceB01P:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -173,7 +173,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB01P(out, arr, plan.End, plan.Step)
 
 	case OpSelectSliceB01N:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -181,7 +181,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB01N(out, arr, plan.End, plan.Step)
 
 	case OpSelectSliceB11PP:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -189,7 +189,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB11PP(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceB11PN:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -197,7 +197,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB11PN(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceB11NP:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -205,7 +205,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 		return appendSliceB11NP(out, arr, plan.Start, plan.End, plan.Step)
 
 	case OpSelectSliceB11NN:
-		arr, ok := n.([]any)
+		arr, ok := node.([]any)
 		if !ok || len(arr) == 0 {
 			return out
 		}
@@ -217,7 +217,7 @@ func (r *Runnable) selectNode(out []any, n any, root any, i Instruction) []any {
 
 	case OpSelectFilter:
 		flt := r.Constants[i.Arg].(FilterExpr)
-		return appendFilter(out, n, root, flt)
+		return appendFilter(out, node, root, flt)
 
 	default:
 		return out
@@ -248,14 +248,14 @@ func appendWildcard(out []any, node any) []any {
 	}
 }
 
-func appendSliceF00(out []any, arr []any, step int) []any {
+func appendSliceF00(out, arr []any, step int) []any {
 	for idx := 0; idx < len(arr); idx += step {
 		out = append(out, arr[idx])
 	}
 	return out
 }
 
-func appendSliceF10P(out []any, arr []any, start int, step int) []any {
+func appendSliceF10P(out, arr []any, start, step int) []any {
 	start = forwardStartPos(start, len(arr))
 	for idx := start; idx < len(arr); idx += step {
 		out = append(out, arr[idx])
@@ -263,7 +263,7 @@ func appendSliceF10P(out []any, arr []any, start int, step int) []any {
 	return out
 }
 
-func appendSliceF10N(out []any, arr []any, start int, step int) []any {
+func appendSliceF10N(out, arr []any, start, step int) []any {
 	start = forwardStartNeg(start, len(arr))
 	for idx := start; idx < len(arr); idx += step {
 		out = append(out, arr[idx])
@@ -271,7 +271,7 @@ func appendSliceF10N(out []any, arr []any, start int, step int) []any {
 	return out
 }
 
-func appendSliceF01P(out []any, arr []any, end int, step int) []any {
+func appendSliceF01P(out, arr []any, end, step int) []any {
 	end = forwardEndPos(end, len(arr))
 	for idx := 0; idx < end; idx += step {
 		out = append(out, arr[idx])
@@ -279,7 +279,7 @@ func appendSliceF01P(out []any, arr []any, end int, step int) []any {
 	return out
 }
 
-func appendSliceF01N(out []any, arr []any, end int, step int) []any {
+func appendSliceF01N(out, arr []any, end, step int) []any {
 	end = forwardEndNeg(end, len(arr))
 	for idx := 0; idx < end; idx += step {
 		out = append(out, arr[idx])
@@ -287,9 +287,7 @@ func appendSliceF01N(out []any, arr []any, end int, step int) []any {
 	return out
 }
 
-func appendSliceF11PP(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceF11PP(out, arr []any, start, end, step int) []any {
 	size := len(arr)
 	start = forwardStartPos(start, size)
 	end = forwardEndPos(end, size)
@@ -302,9 +300,7 @@ func appendSliceF11PP(
 	return out
 }
 
-func appendSliceF11PN(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceF11PN(out, arr []any, start, end, step int) []any {
 	size := len(arr)
 	start = forwardStartPos(start, size)
 	end = forwardEndNeg(end, size)
@@ -317,9 +313,7 @@ func appendSliceF11PN(
 	return out
 }
 
-func appendSliceF11NP(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceF11NP(out, arr []any, start, end, step int) []any {
 	size := len(arr)
 	start = forwardStartNeg(start, size)
 	end = forwardEndPos(end, size)
@@ -332,9 +326,7 @@ func appendSliceF11NP(
 	return out
 }
 
-func appendSliceF11NN(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceF11NN(out, arr []any, start, end, step int) []any {
 	size := len(arr)
 	start = forwardStartNeg(start, size)
 	end = forwardEndNeg(end, size)
@@ -347,14 +339,14 @@ func appendSliceF11NN(
 	return out
 }
 
-func appendSliceB00(out []any, arr []any, step int) []any {
+func appendSliceB00(out, arr []any, step int) []any {
 	for idx := len(arr) - 1; idx > -1; idx += step {
 		out = append(out, arr[idx])
 	}
 	return out
 }
 
-func appendSliceB10P(out []any, arr []any, start int, step int) []any {
+func appendSliceB10P(out, arr []any, start, step int) []any {
 	start = backwardStartPos(start, len(arr))
 	for idx := start; idx > -1; idx += step {
 		out = append(out, arr[idx])
@@ -362,7 +354,7 @@ func appendSliceB10P(out []any, arr []any, start int, step int) []any {
 	return out
 }
 
-func appendSliceB10N(out []any, arr []any, start int, step int) []any {
+func appendSliceB10N(out, arr []any, start, step int) []any {
 	start = backwardStartNeg(start, len(arr))
 	for idx := start; idx > -1; idx += step {
 		out = append(out, arr[idx])
@@ -370,7 +362,7 @@ func appendSliceB10N(out []any, arr []any, start int, step int) []any {
 	return out
 }
 
-func appendSliceB01P(out []any, arr []any, end int, step int) []any {
+func appendSliceB01P(out, arr []any, end, step int) []any {
 	end = backwardEndPos(end, len(arr))
 	for idx := len(arr) - 1; idx > end; idx += step {
 		out = append(out, arr[idx])
@@ -378,7 +370,7 @@ func appendSliceB01P(out []any, arr []any, end int, step int) []any {
 	return out
 }
 
-func appendSliceB01N(out []any, arr []any, end int, step int) []any {
+func appendSliceB01N(out, arr []any, end, step int) []any {
 	end = backwardEndNeg(end, len(arr))
 	for idx := len(arr) - 1; idx > end; idx += step {
 		out = append(out, arr[idx])
@@ -386,9 +378,7 @@ func appendSliceB01N(out []any, arr []any, end int, step int) []any {
 	return out
 }
 
-func appendSliceB11PP(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceB11PP(out, arr []any, start, end, step int) []any {
 	start = backwardStartPos(start, len(arr))
 	end = backwardEndPos(end, len(arr))
 	for idx := start; idx > end; idx += step {
@@ -397,9 +387,7 @@ func appendSliceB11PP(
 	return out
 }
 
-func appendSliceB11PN(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceB11PN(out, arr []any, start, end, step int) []any {
 	start = backwardStartPos(start, len(arr))
 	end = backwardEndNeg(end, len(arr))
 	for idx := start; idx > end; idx += step {
@@ -408,9 +396,7 @@ func appendSliceB11PN(
 	return out
 }
 
-func appendSliceB11NP(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceB11NP(out, arr []any, start, end, step int) []any {
 	start = backwardStartNeg(start, len(arr))
 	end = backwardEndPos(end, len(arr))
 	for idx := start; idx > end; idx += step {
@@ -419,9 +405,7 @@ func appendSliceB11NP(
 	return out
 }
 
-func appendSliceB11NN(
-	out []any, arr []any, start int, end int, step int,
-) []any {
+func appendSliceB11NN(out, arr []any, start, end, step int) []any {
 	start = backwardStartNeg(start, len(arr))
 	end = backwardEndNeg(end, len(arr))
 	for idx := start; idx > end; idx += step {
@@ -430,7 +414,7 @@ func appendSliceB11NN(
 	return out
 }
 
-func forwardStartPos(start int, size int) int {
+func forwardStartPos(start, size int) int {
 	if start < 0 {
 		return 0
 	}
@@ -440,7 +424,7 @@ func forwardStartPos(start int, size int) int {
 	return start
 }
 
-func forwardStartNeg(start int, size int) int {
+func forwardStartNeg(start, size int) int {
 	start += size
 	if start < 0 {
 		return 0
@@ -451,7 +435,7 @@ func forwardStartNeg(start int, size int) int {
 	return start
 }
 
-func forwardEndPos(end int, size int) int {
+func forwardEndPos(end, size int) int {
 	if end < 0 {
 		return 0
 	}
@@ -461,7 +445,7 @@ func forwardEndPos(end int, size int) int {
 	return end
 }
 
-func forwardEndNeg(end int, size int) int {
+func forwardEndNeg(end, size int) int {
 	end += size
 	if end < 0 {
 		return 0
@@ -472,7 +456,7 @@ func forwardEndNeg(end int, size int) int {
 	return end
 }
 
-func backwardStartPos(start int, size int) int {
+func backwardStartPos(start, size int) int {
 	if start < 0 {
 		return -1
 	}
@@ -482,7 +466,7 @@ func backwardStartPos(start int, size int) int {
 	return start
 }
 
-func backwardStartNeg(start int, size int) int {
+func backwardStartNeg(start, size int) int {
 	start += size
 	if start >= size {
 		return size - 1
@@ -490,7 +474,7 @@ func backwardStartNeg(start int, size int) int {
 	return start
 }
 
-func backwardEndPos(end int, size int) int {
+func backwardEndPos(end, size int) int {
 	if end < -1 {
 		return -1
 	}
@@ -500,7 +484,7 @@ func backwardEndPos(end int, size int) int {
 	return end
 }
 
-func backwardEndNeg(end int, size int) int {
+func backwardEndNeg(end, size int) int {
 	end += size
 	if end < -1 {
 		return -1
@@ -511,7 +495,7 @@ func backwardEndNeg(end int, size int) int {
 	return end
 }
 
-func appendFilter(out []any, node any, root any, flt FilterExpr) []any {
+func appendFilter(out []any, node, root any, flt FilterExpr) []any {
 	ctx := &evalCtx{root: root}
 	switch v := node.(type) {
 	case []any:
@@ -559,7 +543,7 @@ func sortedKeys(v map[string]any) []string {
 	return keys
 }
 
-func normalizeIndex(size int, idx int) int {
+func normalizeIndex(size, idx int) int {
 	if idx < 0 {
 		idx += size
 	}

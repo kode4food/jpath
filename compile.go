@@ -48,8 +48,8 @@ func (c *Compiler) Compile(path PathExpr) (Runnable, error) {
 	return compilePath(path, c.registry)
 }
 
-func (r *Runnable) addConst(v any) int {
-	r.Constants = append(r.Constants, v)
+func (r *Runnable) addConst(value any) int {
+	r.Constants = append(r.Constants, value)
 	return len(r.Constants) - 1
 }
 
@@ -176,7 +176,7 @@ func sliceForwardEndOpcode(end int) Opcode {
 	return OpSelectSliceF01N
 }
 
-func sliceForwardRangeOpcode(start int, end int) Opcode {
+func sliceForwardRangeOpcode(start, end int) Opcode {
 	switch {
 	case start >= 0 && end >= 0:
 		return OpSelectSliceF11PP
@@ -203,7 +203,7 @@ func sliceBackwardEndOpcode(end int) Opcode {
 	return OpSelectSliceB01N
 }
 
-func sliceBackwardRangeOpcode(start int, end int) Opcode {
+func sliceBackwardRangeOpcode(start, end int) Opcode {
 	switch {
 	case start >= 0 && end >= 0:
 		return OpSelectSliceB11PP

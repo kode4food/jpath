@@ -105,8 +105,8 @@ func (f compiledFuncExpr) eval(ctx *evalCtx) evalValue {
 	return fromFunctionValue(f.evaluator(evalFunctionArgs(f.args, ctx)))
 }
 
-func scalarValue(v any) evalValue {
-	return evalValue{kind: evalScalar, scalar: v}
+func scalarValue(value any) evalValue {
+	return evalValue{kind: evalScalar, scalar: value}
 }
 
 func nodesValue(v []any) evalValue {
@@ -138,7 +138,7 @@ func fromFunctionValue(v FunctionValue) evalValue {
 	return scalarValue(v.Scalar)
 }
 
-func compareValues(left evalValue, right evalValue, op string) bool {
+func compareValues(left, right evalValue, op string) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -180,7 +180,7 @@ func compareValues(left evalValue, right evalValue, op string) bool {
 	return false
 }
 
-func comparePair(left any, right any, op string) (bool, bool) {
+func comparePair(left, right any, op string) (bool, bool) {
 	switch op {
 	case "==":
 		return true, reflect.DeepEqual(left, right)
@@ -245,11 +245,11 @@ func toBool(v evalValue) bool {
 	}
 }
 
-func asNumber(v any) (float64, bool) {
-	if n, ok := v.(float64); ok {
+func asNumber(value any) (float64, bool) {
+	if n, ok := value.(float64); ok {
 		return n, true
 	}
-	if n, ok := v.(int); ok {
+	if n, ok := value.(int); ok {
 		return float64(n), true
 	}
 	return 0, false
