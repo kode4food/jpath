@@ -106,4 +106,8 @@ Registry function errors are exported:
 
 ## Status
 
-Work in progress. Not ready for production use.
+jpath is a work in progress, but probably usable.
+
+- Implements RFC 9535 (JSONPath)
+- Passes the JSONPath Compliance Test Suite
+- Pre-v1.0.0: API may change
