@@ -30,8 +30,7 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 - `(*Registry).RegisterFunction(name string, def FunctionDefinition) error`
 - `(*Registry).Clone() *Registry`
 
-Top-level functions use a default registry. Use explicit `Registry`
-instances when you need sandboxed extension registration.
+Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
 
 ## Usage
 
