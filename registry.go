@@ -75,9 +75,6 @@ func (r *Registry) Clone() *Registry {
 
 // RegisterFunction registers a named function in this registry
 func (r *Registry) RegisterFunction(name string, def FunctionDefinition) error {
-	if r == nil {
-		return fmt.Errorf("%w: nil registry", ErrBadFunctionDefinition)
-	}
 	if !isValidFunctionName(name) {
 		return fmt.Errorf("%w: %s", ErrBadFunctionName, name)
 	}

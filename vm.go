@@ -4,9 +4,6 @@ import "sort"
 
 // Run executes the program against a JSON document
 func (r *Runnable) Run(document any) []any {
-	if r == nil {
-		return []any{}
-	}
 	current := []any{document}
 	var out []any
 	for pc := 0; pc < len(r.Code); {
