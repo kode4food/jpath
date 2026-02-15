@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestVMBoundaryHelpers(t *testing.T) {
+func TestPathBoundaryHelpers(t *testing.T) {
 	assert.Equal(t, 0, forwardStartPos(-1, 3))
 	assert.Equal(t, 3, forwardStartPos(9, 3))
 	assert.Equal(t, 0, forwardStartNeg(-9, 3))
@@ -28,7 +28,7 @@ func TestVMBoundaryHelpers(t *testing.T) {
 }
 
 func TestSelectNodeFallbackCases(t *testing.T) {
-	run := &Runnable{
+	path := &Path{
 		Constants: []any{
 			"name",
 			0,
@@ -41,12 +41,12 @@ func TestSelectNodeFallbackCases(t *testing.T) {
 	assert.Equal(
 		t,
 		base,
-		run.selectNode(base, 1, nil, Instruction{Op: OpSelectName, Arg: 0}),
+		path.selectNode(base, 1, nil, Instruction{Op: OpSelectName, Arg: 0}),
 	)
 	assert.Equal(
 		t,
 		base,
-		run.selectNode(base, map[string]any{}, nil, Instruction{
+		path.selectNode(base, map[string]any{}, nil, Instruction{
 			Op:  OpSelectName,
 			Arg: 0,
 		}),
@@ -54,7 +54,7 @@ func TestSelectNodeFallbackCases(t *testing.T) {
 	assert.Equal(
 		t,
 		base,
-		run.selectNode(base, map[string]any{}, nil, Instruction{
+		path.selectNode(base, map[string]any{}, nil, Instruction{
 			Op:  OpSelectIndex,
 			Arg: 1,
 		}),
@@ -62,7 +62,7 @@ func TestSelectNodeFallbackCases(t *testing.T) {
 	assert.Equal(
 		t,
 		base,
-		run.selectNode(
+		path.selectNode(
 			base,
 			map[string]any{},
 			nil,
@@ -94,7 +94,7 @@ func TestSelectNodeFallbackCases(t *testing.T) {
 		assert.Equal(
 			t,
 			base,
-			run.selectNode(base, map[string]any{}, nil, Instruction{
+			path.selectNode(base, map[string]any{}, nil, Instruction{
 				Op:  op,
 				Arg: 2,
 			}),
@@ -104,11 +104,11 @@ func TestSelectNodeFallbackCases(t *testing.T) {
 	assert.Equal(
 		t,
 		base,
-		run.selectNode(base, 1, nil, Instruction{Op: OpSelectFilter, Arg: 3}),
+		path.selectNode(base, 1, nil, Instruction{Op: OpSelectFilter, Arg: 3}),
 	)
 	assert.Equal(
 		t,
 		base,
-		run.selectNode(base, 1, nil, Instruction{Op: Opcode(255), Arg: 0}),
+		path.selectNode(base, 1, nil, Instruction{Op: Opcode(255), Arg: 0}),
 	)
 }

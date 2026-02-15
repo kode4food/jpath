@@ -23,7 +23,7 @@ type (
 
 	compiledPathValueExpr struct {
 		absolute bool
-		run      Runnable
+		path     Path
 	}
 
 	compiledFuncExpr struct {
@@ -44,7 +44,7 @@ func (l LiteralExpr) eval(_ *evalCtx) evalValue {
 }
 
 func (p PathValueExpr) eval(ctx *evalCtx) evalValue {
-	run, err := makeRunnable(p.Path, NewRegistry())
+	path, err := makePath(p.Path, NewRegistry())
 	if err != nil {
 		return nodesValue(nil)
 	}
@@ -52,7 +52,7 @@ func (p PathValueExpr) eval(ctx *evalCtx) evalValue {
 	if p.Absolute {
 		base = ctx.root
 	}
-	res := run.Run(base)
+	res := path.Query(base)
 	return nodesValue(res)
 }
 
@@ -61,7 +61,7 @@ func (p compiledPathValueExpr) eval(ctx *evalCtx) evalValue {
 	if p.absolute {
 		base = ctx.root
 	}
-	res := p.run.Run(base)
+	res := p.path.Query(base)
 	return nodesValue(res)
 }
 

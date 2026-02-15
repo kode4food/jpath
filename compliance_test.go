@@ -47,7 +47,7 @@ func TestComplianceSuite(t *testing.T) {
 	for _, tc := range suite.Tests {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			p, err := reg.Query(tc.Selector)
+			got, err := reg.Query(tc.Selector, tc.Document)
 			if tc.InvalidSelector {
 				assert.Error(t, err)
 				return
@@ -55,7 +55,6 @@ func TestComplianceSuite(t *testing.T) {
 			if !assert.NoError(t, err) {
 				return
 			}
-			got := p.Query(tc.Document)
 			if got == nil {
 				got = []any{}
 			}

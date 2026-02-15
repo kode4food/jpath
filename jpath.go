@@ -1,34 +1,33 @@
 package jpath
 
-// DefaultRegistry is the package-level default registry
-var DefaultRegistry = NewRegistry()
+var defaultRegistry = NewRegistry()
 
 // Parse parses a JSONPath query into a PathExpr syntax tree
 func Parse(query string) (PathExpr, error) {
-	return DefaultRegistry.Parse(query)
+	return defaultRegistry.Parse(query)
 }
 
 // MustParse parses a JSONPath query or panics
 func MustParse(query string) PathExpr {
-	return DefaultRegistry.MustParse(query)
+	return defaultRegistry.MustParse(query)
 }
 
-// Compile compiles a parsed PathExpr into a Runnable program
-func Compile(path PathExpr) (Runnable, error) {
-	return DefaultRegistry.Compile(path)
+// Compile compiles a parsed PathExpr into an executable Path
+func Compile(path PathExpr) (Path, error) {
+	return defaultRegistry.Compile(path)
 }
 
 // MustCompile compiles a parsed PathExpr or panics
-func MustCompile(path PathExpr) Runnable {
-	return DefaultRegistry.MustCompile(path)
+func MustCompile(path PathExpr) Path {
+	return defaultRegistry.MustCompile(path)
 }
 
-// Query parses and compiles a JSONPath query into an executable Path
-func Query(query string) (*Path, error) {
-	return DefaultRegistry.Query(query)
+// Query parses and compiles a JSONPath query, then runs it on a document
+func Query(query string, document any) ([]any, error) {
+	return defaultRegistry.Query(query, document)
 }
 
-// MustQuery parses and compiles a JSONPath query or panics
-func MustQuery(query string) *Path {
-	return DefaultRegistry.MustQuery(query)
+// MustQuery parses and compiles a JSONPath query, then runs it or panics
+func MustQuery(query string, document any) []any {
+	return defaultRegistry.MustQuery(query, document)
 }

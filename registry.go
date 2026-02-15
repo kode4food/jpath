@@ -117,14 +117,14 @@ func (r *Registry) MustParse(query string) PathExpr {
 	return res
 }
 
-// Compile compiles a parsed syntax tree into a runnable VM program
-func (r *Registry) Compile(path PathExpr) (Runnable, error) {
+// Compile compiles a parsed syntax tree into an executable Path
+func (r *Registry) Compile(path PathExpr) (Path, error) {
 	c := &Compiler{registry: r}
 	return c.Compile(path)
 }
 
 // MustCompile compiles a parsed syntax tree or panics
-func (r *Registry) MustCompile(path PathExpr) Runnable {
+func (r *Registry) MustCompile(path PathExpr) Path {
 	res, err := r.Compile(path)
 	if err != nil {
 		panic(err)
@@ -132,8 +132,8 @@ func (r *Registry) MustCompile(path PathExpr) Runnable {
 	return res
 }
 
-// Query parses and compiles a query string into an executable path
-func (r *Registry) Query(query string) (*Path, error) {
+// Query parses and compiles a query string, then runs it on a document
+func (r *Registry) Query(query string, document any) ([]any, error) {
 	ast, err := r.Parse(query)
 	if err != nil {
 		return nil, err
@@ -142,15 +142,12 @@ func (r *Registry) Query(query string) (*Path, error) {
 	if err != nil {
 		return nil, wrapPathError(query, 0, err)
 	}
-	return &Path{
-		source:   query,
-		runnable: run,
-	}, nil
+	return run.Query(document), nil
 }
 
-// MustQuery parses and compiles a query string or panics
-func (r *Registry) MustQuery(query string) *Path {
-	res, err := r.Query(query)
+// MustQuery parses and compiles a query string, then runs it or panics
+func (r *Registry) MustQuery(query string, document any) []any {
+	res, err := r.Query(query, document)
 	if err != nil {
 		panic(err)
 	}

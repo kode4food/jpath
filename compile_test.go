@@ -19,7 +19,7 @@ func TestCompileInternalErrorBranches(t *testing.T) {
 
 	_, err = compileSelector(
 		SelectorExpr{Kind: SelectorKind(255)},
-		&Runnable{},
+		&Path{},
 		NewRegistry(),
 	)
 	assert.Error(t, err)

@@ -3,17 +3,17 @@ package jpath
 import "fmt"
 
 type (
-	// Compiler compiles parsed JSONPath syntax trees into runnable programs
-	Compiler struct {
-		registry *Registry
-	}
-
-	// Runnable is an executable VM program
-	Runnable struct {
+	// Path is an executable VM program
+	Path struct {
 		// Code stores VM instructions
 		Code []Instruction
 		// Constants stores literal values referenced by instructions
 		Constants []any
+	}
+
+	// Compiler compiles parsed JSONPath syntax trees into runnable programs
+	Compiler struct {
+		registry *Registry
 	}
 
 	// Instruction is a single VM instruction
@@ -43,25 +43,25 @@ func NewCompiler() *Compiler {
 	return &Compiler{}
 }
 
-// Compile compiles a parsed PathExpr into a Runnable program
-func (c *Compiler) Compile(path PathExpr) (Runnable, error) {
+// Compile compiles a parsed PathExpr into an executable Path
+func (c *Compiler) Compile(path PathExpr) (Path, error) {
 	return compilePath(path, c.registry)
 }
 
-func (r *Runnable) addConst(value any) int {
-	r.Constants = append(r.Constants, value)
-	return len(r.Constants) - 1
+func (p *Path) addConst(value any) int {
+	p.Constants = append(p.Constants, value)
+	return len(p.Constants) - 1
 }
 
-func compilePath(path PathExpr, registry *Registry) (Runnable, error) {
+func compilePath(path PathExpr, registry *Registry) (Path, error) {
 	if err := validatePath(path, registry); err != nil {
-		return Runnable{}, err
+		return Path{}, err
 	}
-	return makeRunnable(path, registry)
+	return makePath(path, registry)
 }
 
-func makeRunnable(path PathExpr, registry *Registry) (Runnable, error) {
-	res := Runnable{}
+func makePath(path PathExpr, registry *Registry) (Path, error) {
+	res := Path{}
 	for _, sg := range path.Segments {
 		if sg.Descendant {
 			res.Code = append(res.Code, Instruction{Op: OpDescend})
@@ -71,7 +71,7 @@ func makeRunnable(path PathExpr, registry *Registry) (Runnable, error) {
 		for _, sl := range sg.Selectors {
 			inst, err := compileSelector(sl, &res, registry)
 			if err != nil {
-				return Runnable{}, err
+				return Path{}, err
 			}
 			res.Code = append(res.Code, inst)
 		}
@@ -83,7 +83,7 @@ func makeRunnable(path PathExpr, registry *Registry) (Runnable, error) {
 }
 
 func compileSelector(
-	sel SelectorExpr, run *Runnable, registry *Registry,
+	sel SelectorExpr, run *Path, registry *Registry,
 ) (Instruction, error) {
 	switch sel.Kind {
 	case SelectorName:
@@ -108,7 +108,7 @@ func compileSelector(
 	}
 }
 
-func compileSlice(s SliceExpr, run *Runnable) Instruction {
+func compileSlice(s SliceExpr, run *Path) Instruction {
 	if s.Step == 0 {
 		return Instruction{Op: OpSelectSliceEmpty}
 	}
@@ -221,11 +221,11 @@ func compileFilter(expr FilterExpr, registry *Registry) (FilterExpr, error) {
 	case LiteralExpr:
 		return v, nil
 	case PathValueExpr:
-		run, err := makeRunnable(v.Path, registry)
+		path, err := makePath(v.Path, registry)
 		if err != nil {
 			return nil, err
 		}
-		return compiledPathValueExpr{absolute: v.Absolute, run: run}, nil
+		return compiledPathValueExpr{absolute: v.Absolute, path: path}, nil
 	case UnaryExpr:
 		ex, err := compileFilter(v.Expr, registry)
 		if err != nil {

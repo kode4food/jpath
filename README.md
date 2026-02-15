@@ -2,7 +2,7 @@
 
 ![Build Status](https://github.com/kode4food/jpath/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/jpath/coverage.svg)](https://qlty.sh/gh/kode4food/projects/jpath) [![Maintainability](https://qlty.sh/gh/kode4food/projects/jpath/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/jpath) [![GitHub](https://img.shields.io/github/license/kode4food/jpath)](https://github.com/kode4food/jpath)
 
-jpath is a focused JSONPath parser/compiler for Go. The package exposes six top-level convenience functions backed by a global default registry, and you can create isolated registries for sandboxed extension-function behavior.
+jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipeline: parse into an inspectable AST, then compile into a runnable instruction stream. That separation lets you validate or rewrite paths before execution, while keeping runtime evaluation fast and predictable. Extension functions are scoped through registries so custom behavior can be sandboxed.
 
 ## Features
 
@@ -16,51 +16,53 @@ jpath is a focused JSONPath parser/compiler for Go. The package exposes six top-
 
 - `Parse(query string) (PathExpr, error)`
 - `MustParse(query string) PathExpr`
-- `Compile(path PathExpr) (Runnable, error)`
-- `MustCompile(path PathExpr) Runnable`
-- `Query(query string) (*Path, error)`
-- `MustQuery(query string) *Path`
+- `Compile(path PathExpr) (Path, error)`
+- `MustCompile(path PathExpr) Path`
+- `Query(query string, document any) ([]any, error)`
+- `MustQuery(query string, document any) []any`
+
+### Registry Management
+
 - `NewRegistry() *Registry`
 - `(*Registry).Parse(query string) (PathExpr, error)`
-- `(*Registry).Compile(path PathExpr) (Runnable, error)`
-- `(*Registry).Query(query string) (*Path, error)`
+- `(*Registry).Compile(path PathExpr) (Path, error)`
+- `(*Registry).Query(query string, document any) ([]any, error)`
 - `(*Registry).RegisterFunction(name string, def FunctionDefinition) error`
 - `(*Registry).Clone() *Registry`
 
-Top-level functions use `DefaultRegistry`. Use explicit `Registry` instances when you need sandboxed extension registration.
+Top-level functions use an internal package registry. Use explicit `Registry` instances when you need sandboxed extension registration.
 
 ## Usage
 
 ### Parse, compile, and run
 
 ```go
-reg := jpath.NewRegistry()
-ast, err := reg.Parse("$.store.book[*].title")
+registry := jpath.NewRegistry()
+pathExpr, err := registry.Parse("$.store.book[*].title")
 if err != nil {
 	panic(err)
 }
-run, err := reg.Compile(ast)
+program, err := registry.Compile(pathExpr)
 if err != nil {
 	panic(err)
 }
-result := run.Run(doc)
-_ = result
+matches := program.Query(document)
+_ = matches
 ```
 
 ### One-step query
 
 ```go
-reg := jpath.NewRegistry()
-path := reg.MustQuery("$.store.book[*].title")
-result := path.Query(doc)
-_ = result
+registry := jpath.NewRegistry()
+matches := registry.MustQuery("$.store.book[*].title", document)
+_ = matches
 ```
 
 ### Register an extension function
 
 ```go
-reg := jpath.NewRegistry()
-reg.MustRegisterFunction("startsWith", jpath.FunctionDefinition{
+registry := jpath.NewRegistry()
+registry.MustRegisterFunction("startsWith", jpath.FunctionDefinition{
 	Validate: func(args []jpath.FilterExpr, use jpath.FunctionUse, inComparison bool) error {
 		if len(args) != 2 {
 			return fmt.Errorf("invalid function arity")
