@@ -6,7 +6,7 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 
 ## Features
 
-- Parse JSONPath expressions into exported AST nodes
+- Parse JSONPath expressions into AST nodes
 - Compile AST into a fast runnable instruction stream
 - Register extension filter functions per registry instance
 - Keep registries isolated for sandboxed behavior
@@ -30,7 +30,8 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 - `(*Registry).RegisterFunction(name string, def FunctionDefinition) error`
 - `(*Registry).Clone() *Registry`
 
-Top-level functions use an internal package registry. Use explicit `Registry` instances when you need sandboxed extension registration.
+Top-level functions use an default registry. Use explicit `Registry`
+instances when you need sandboxed extension registration.
 
 ## Usage
 
@@ -87,7 +88,7 @@ registry.MustRegisterFunction("startsWith", jpath.FunctionDefinition{
 
 `(*Registry).Query` wraps parse and compile failures with `ErrInvalidPath`.
 
-Parser errors are exported for `errors.Is` checks:
+Parser errors for `errors.Is` checks:
 
 - `ErrExpectedRoot`
 - `ErrUnexpectedToken`
@@ -97,7 +98,7 @@ Parser errors are exported for `errors.Is` checks:
 - `ErrBadSlice`
 - `ErrBadFunction`
 
-Registry function errors are exported:
+Registry function errors:
 
 - `ErrUnknownFunction`
 - `ErrBadFunctionName`
@@ -105,8 +106,6 @@ Registry function errors are exported:
 - `ErrFunctionExists`
 
 ## Status
-
-jpath is a work in progress, but probably usable.
 
 - Implements RFC 9535 (JSONPath)
 - Passes the JSONPath Compliance Test Suite
