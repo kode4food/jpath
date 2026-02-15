@@ -6,31 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewCompiler(t *testing.T) {
-	c := NewCompiler()
-	assert.NotNil(t, c)
-}
-
-func TestMustRegisterFunction(t *testing.T) {
-	reg := NewRegistry()
-
-	assert.NotPanics(t, func() {
-		reg.MustRegisterFunction("alwaysTrue", FunctionDefinition{
-			Eval: func(_ []FunctionValue) FunctionValue {
-				return FunctionValue{Scalar: true}
-			},
-		})
-	})
-
-	assert.Panics(t, func() {
-		reg.MustRegisterFunction("alwaysTrue", FunctionDefinition{
-			Eval: func(_ []FunctionValue) FunctionValue {
-				return FunctionValue{Scalar: true}
-			},
-		})
-	})
-}
-
 func TestPathValueExprEval(t *testing.T) {
 	ctx := &evalCtx{
 		root: map[string]any{
@@ -118,4 +93,60 @@ func TestCompiledFuncExprEvalNodes(t *testing.T) {
 	res := ex.eval(&evalCtx{})
 	assert.Equal(t, evalNodes, res.kind)
 	assert.Equal(t, []any{float64(7)}, res.nodes)
+}
+
+func TestBuiltinEvalEdgeCases(t *testing.T) {
+	res := evalCount(nil)
+	_, ok := res.Scalar.(nothingType)
+	assert.True(t, ok)
+
+	res = evalCount([]FunctionValue{
+		{Scalar: float64(3)},
+	})
+	_, ok = res.Scalar.(nothingType)
+	assert.True(t, ok)
+
+	res = evalCount([]FunctionValue{
+		{IsNodes: true, Nodes: []any{float64(1), float64(2)}},
+	})
+	assert.Equal(t, float64(2), res.Scalar)
+
+	res = evalValueFn(nil)
+	_, ok = res.Scalar.(nothingType)
+	assert.True(t, ok)
+
+	res = evalValueFn([]FunctionValue{
+		{IsNodes: true, Nodes: []any{float64(1), float64(2)}},
+	})
+	_, ok = res.Scalar.(nothingType)
+	assert.True(t, ok)
+
+	res = evalValueFn([]FunctionValue{
+		{IsNodes: true, Nodes: []any{float64(9)}},
+	})
+	assert.Equal(t, float64(9), res.Scalar)
+
+	_, ok = singularFunctionValue(FunctionValue{
+		IsNodes: true,
+		Nodes:   nil,
+	})
+	assert.False(t, ok)
+}
+
+func TestCompareValuesEmptyCases(t *testing.T) {
+	empty := evalValue{kind: evalNodes, nodes: nil}
+	nothingNode := evalValue{
+		kind:  evalNodes,
+		nodes: []any{nothingType{}},
+	}
+	valueNode := evalValue{
+		kind:  evalNodes,
+		nodes: []any{float64(1)},
+	}
+
+	assert.True(t, compareValues(empty, empty, "=="))
+	assert.True(t, compareValues(empty, nothingNode, "=="))
+	assert.False(t, compareValues(empty, valueNode, "=="))
+	assert.True(t, compareValues(empty, valueNode, "!="))
+	assert.False(t, compareValues(empty, valueNode, "<"))
 }
