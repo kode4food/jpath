@@ -47,15 +47,12 @@ if err != nil {
 	panic(err)
 }
 matches := program.Query(document)
-_ = matches
 ```
 
 ### One-step query
 
 ```go
-registry := jpath.NewRegistry()
-matches := registry.MustQuery("$.store.book[*].title", document)
-_ = matches
+matches := jpath.MustQuery("$.store.book[*].title", document)
 ```
 
 ### Register an extension function
