@@ -38,7 +38,7 @@ func TestComplianceSuite(t *testing.T) {
 	}
 	buf, err := os.ReadFile(path)
 	if err != nil {
-		t.Skipf("compliance suite unavailable at %s: %v", path, err)
+		t.Fatalf("compliance suite unavailable at %s: %v", path, err)
 	}
 	var suite complianceSuite
 	if !assert.NoError(t, json.Unmarshal(buf, &suite)) {

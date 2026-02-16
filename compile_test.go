@@ -34,7 +34,7 @@ func TestCompileBytecode(t *testing.T) {
 	)
 	buf, err := os.ReadFile(ctsPath)
 	if err != nil {
-		t.Skipf("compliance suite unavailable at %s: %v", ctsPath, err)
+		t.Fatalf("compliance suite unavailable at %s: %v", ctsPath, err)
 	}
 	var suite ctsSuite
 	if !assert.NoError(t, json.Unmarshal(buf, &suite)) {
