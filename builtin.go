@@ -20,15 +20,11 @@ var defaultFunctions = map[string]*FunctionDefinition{
 	},
 	"match": {
 		Validate: validateMatchSearchFunction,
-		Eval: func(args []*FunctionValue) *FunctionValue {
-			return evalMatch(args, true)
-		},
+		Eval:     evalMatchFunction,
 	},
 	"search": {
 		Validate: validateMatchSearchFunction,
-		Eval: func(args []*FunctionValue) *FunctionValue {
-			return evalMatch(args, false)
-		},
+		Eval:     evalSearchFunction,
 	},
 }
 
@@ -36,77 +32,103 @@ func registerDefaultFunctions(r *Registry) {
 	maps.Copy(r.functions, defaultFunctions)
 }
 
-func evalLength(args []*FunctionValue) *FunctionValue {
+func validateLengthFunction(
+	args []FilterExpr, use FunctionUse, inComparison bool,
+) error {
+	return validateUnaryComparedSingular("length", args, use, inComparison)
+}
+
+func validateCountFunction(
+	args []FilterExpr, use FunctionUse, inComparison bool,
+) error {
+	return validateUnaryComparedReq("count", args, use, inComparison)
+}
+
+func validateValueFunction(
+	args []FilterExpr, use FunctionUse, inComparison bool,
+) error {
+	return validateUnaryComparedReq("value", args, use, inComparison)
+}
+
+func evalMatchFunction(args []*Value) *Value {
+	return evalMatch(args, true)
+}
+
+func evalSearchFunction(args []*Value) *Value {
+	return evalMatch(args, false)
+}
+
+func evalLength(args []*Value) *Value {
 	if len(args) != 1 {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 	v := args[0]
 	if v.IsNodes {
 		if len(v.Nodes) != 1 {
-			return scalarFunctionValue(nothing)
+			return ScalarValue(nothing)
 		}
 		return evalLengthValue(v.Nodes[0])
 	}
 	return evalLengthValue(v.Scalar)
 }
 
-func evalLengthValue(value any) *FunctionValue {
+func evalLengthValue(value any) *Value {
 	switch raw := value.(type) {
 	case string:
-		return scalarFunctionValue(float64(len([]rune(raw))))
+		return ScalarValue(float64(len([]rune(raw))))
 	case []any:
-		return scalarFunctionValue(float64(len(raw)))
+		return ScalarValue(float64(len(raw)))
 	case map[string]any:
-		return scalarFunctionValue(float64(len(raw)))
+		return ScalarValue(float64(len(raw)))
 	default:
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 }
 
-func evalCount(args []*FunctionValue) *FunctionValue {
+func evalCount(args []*Value) *Value {
 	if len(args) != 1 {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 	v := args[0]
 	if v.IsNodes {
-		return scalarFunctionValue(float64(len(v.Nodes)))
+		return ScalarValue(float64(len(v.Nodes)))
 	}
-	return scalarFunctionValue(nothing)
+	return ScalarValue(nothing)
 }
 
-func evalValueFunc(args []*FunctionValue) *FunctionValue {
+func evalValueFunc(args []*Value) *Value {
 	if len(args) != 1 {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 	v := args[0]
 	if v.IsNodes {
 		if len(v.Nodes) != 1 {
-			return scalarFunctionValue(nothing)
+			return ScalarValue(nothing)
 		}
-		return scalarFunctionValue(v.Nodes[0])
+		return ScalarValue(v.Nodes[0])
 	}
 	return v
 }
 
-func evalMatch(args []*FunctionValue, full bool) *FunctionValue {
+func evalMatch(args []*Value, full bool) *Value {
 	if len(args) != 2 {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
-	lhs, ok := singularFunctionValue(args[0])
+	lhs, ok := singularValue(args[0])
 	if !ok {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
-	rhs, ok := singularFunctionValue(args[1])
+	rhs, ok := singularValue(args[1])
 	if !ok {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 	left, ok := lhs.(string)
 	if !ok {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 	right, ok := rhs.(string)
 	if !ok {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
 	if full {
 		right = "^(?:" + right + ")$"
@@ -114,12 +136,12 @@ func evalMatch(args []*FunctionValue, full bool) *FunctionValue {
 	right = normalizeDotPattern(right)
 	re, err := regexp.Compile(right)
 	if err != nil {
-		return scalarFunctionValue(nothing)
+		return ScalarValue(nothing)
 	}
-	return scalarFunctionValue(re.MatchString(left))
+	return ScalarValue(re.MatchString(left))
 }
 
-func singularFunctionValue(v *FunctionValue) (any, bool) {
+func singularValue(v *Value) (any, bool) {
 	if v.IsNodes {
 		if len(v.Nodes) != 1 {
 			return nil, false
@@ -127,8 +149,4 @@ func singularFunctionValue(v *FunctionValue) (any, bool) {
 		return v.Nodes[0], true
 	}
 	return v.Scalar, true
-}
-
-func scalarFunctionValue(value any) *FunctionValue {
-	return &FunctionValue{Scalar: value}
 }

@@ -58,7 +58,7 @@ func TestCompileSelectors(t *testing.T) {
 			}
 			assert.NotNil(t, path)
 			assert.NotPanics(t, func() {
-				_ = path.Query(nil)
+				_ = path(nil)
 			})
 		})
 	}

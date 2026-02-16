@@ -13,17 +13,12 @@ type (
 	SelectorFunc func(out []any, node, root any) []any
 )
 
-// Query executes the compiled query function chain against a JSON document
-func (p Path) Query(document any) []any {
-	return p(document)
-}
-
 // ComposePath composes segment functions into an executable Path
 func ComposePath(segments ...SegmentFunc) Path {
 	chain := composeSegments(segments)
-	return Path(func(document any) []any {
+	return func(document any) []any {
 		return chain([]any{document}, document)
-	})
+	}
 }
 
 // ChildSegment builds a non-descendant segment from selector functions

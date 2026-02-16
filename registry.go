@@ -14,20 +14,21 @@ type (
 
 	// FunctionDefinition describes a filter function implementation
 	FunctionDefinition struct {
-		Validate FunctionValidator
-		Eval     FunctionEvaluator
+		Validate Validator
+		Eval     Evaluator
 	}
 
-	// FunctionValidator validates function arguments for a call site
-	FunctionValidator func(
-		args []FilterExpr, use FunctionUse, inComparison bool,
-	) error
+	// Validator validates function arguments for a call site
+	Validator func(args []FilterExpr, use FunctionUse, inComparison bool) error
 
-	// FunctionEvaluator evaluates arguments and returns a function result
-	FunctionEvaluator func(args []*FunctionValue) *FunctionValue
+	// Evaluator evaluates wrapped arguments and returns a wrapped result
+	Evaluator func(args []*Value) *Value
 
-	// FunctionValue stores either a scalar or node list argument/result
-	FunctionValue struct {
+	// Function evaluates scalar arguments and returns a scalar result
+	Function func(args ...any) (any, bool)
+
+	// Value stores either a scalar or node list argument/result
+	Value struct {
 		IsNodes bool
 		Scalar  any
 		Nodes   []any
@@ -73,8 +74,10 @@ func (r *Registry) Clone() *Registry {
 	return &res
 }
 
-// RegisterFunction registers a named function in this registry
-func (r *Registry) RegisterFunction(name string, def *FunctionDefinition) error {
+// RegisterDefinition registers a named function definition in this registry
+func (r *Registry) RegisterDefinition(
+	name string, def *FunctionDefinition,
+) error {
 	if !isValidFunctionName(name) {
 		return fmt.Errorf("%w: %s", ErrBadFuncName, name)
 	}
@@ -92,11 +95,42 @@ func (r *Registry) RegisterFunction(name string, def *FunctionDefinition) error 
 	return nil
 }
 
-// MustRegisterFunction registers a function or panics
+// RegisterFunction registers a singular-arg scalar function
+func (r *Registry) RegisterFunction(name string, arity int, fn Function) error {
+	if arity < 0 {
+		return fmt.Errorf("%w: %s", ErrBadFuncDefinition, name)
+	}
+	if fn == nil {
+		return fmt.Errorf("%w: %s", ErrBadFuncDefinition, name)
+	}
+	return r.RegisterDefinition(name, &FunctionDefinition{
+		Validate: func(
+			args []FilterExpr, _ FunctionUse, _ bool,
+		) error {
+			if len(args) == arity {
+				return nil
+			}
+			return fmt.Errorf("%w: %s", ErrInvalidFuncArity, name)
+		},
+		Eval: WrapFunction(fn),
+	})
+}
+
+// MustRegisterFunction registers a scalar function or panics
 func (r *Registry) MustRegisterFunction(
+	name string, arity int, fn Function,
+) *Registry {
+	if err := r.RegisterFunction(name, arity, fn); err != nil {
+		panic(err)
+	}
+	return r
+}
+
+// MustRegisterDefinition registers a function definition or panics
+func (r *Registry) MustRegisterDefinition(
 	name string, def *FunctionDefinition,
 ) *Registry {
-	if err := r.RegisterFunction(name, def); err != nil {
+	if err := r.RegisterDefinition(name, def); err != nil {
 		panic(err)
 	}
 	return r
@@ -142,7 +176,7 @@ func (r *Registry) Query(query string, document any) ([]any, error) {
 	if err != nil {
 		return nil, wrapPathError(query, 0, err)
 	}
-	return run.Query(document), nil
+	return run(document), nil
 }
 
 // MustQuery parses and compiles a query string, then runs it or panics
@@ -157,6 +191,25 @@ func (r *Registry) MustQuery(query string, document any) []any {
 func (r *Registry) function(name string) (*FunctionDefinition, bool) {
 	def, ok := r.functions[name]
 	return def, ok
+}
+
+// WrapFunction wraps a scalar function as an evaluator
+func WrapFunction(fn Function) Evaluator {
+	return func(args []*Value) *Value {
+		values := make([]any, len(args))
+		for idx, arg := range args {
+			val, ok := singularValue(arg)
+			if !ok {
+				return ScalarValue(nothing)
+			}
+			values[idx] = val
+		}
+		res, ok := fn(values...)
+		if !ok {
+			return ScalarValue(nothing)
+		}
+		return ScalarValue(res)
+	}
 }
 
 func isValidFunctionName(name string) bool {

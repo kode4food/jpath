@@ -17,7 +17,7 @@ func TestTopLevelParseCompileQuery(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	got := path.Query([]any{float64(10), float64(20), float64(30)})
+	got := path([]any{float64(10), float64(20), float64(30)})
 	assert.Equal(t, []any{float64(20)}, got)
 }
 
@@ -30,7 +30,7 @@ func TestTopLevelWrappers(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	got := path.Query([]any{float64(1), float64(2)})
+	got := path([]any{float64(1), float64(2)})
 	assert.Equal(t, []any{float64(2)}, got)
 
 	got, err = jpath.Query("$[0]", []any{float64(9)})

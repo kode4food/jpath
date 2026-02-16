@@ -14,21 +14,23 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 
 ## Core API
 
-- `Parse(query string) (*PathExpr, error)`
-- `MustParse(query string) *PathExpr`
-- `Compile(path *PathExpr) (Path, error)`
-- `MustCompile(path *PathExpr) Path`
-- `Query(query string, document any) ([]any, error)`
-- `MustQuery(query string, document any) []any`
+- `type Path func(document any) []any`: compiled query function returned by `Compile`; call directly as `matches := path(document)`.
+- `Parse(query string) (*PathExpr, error)`: parse a query string into an AST (`PathExpr`).
+- `MustParse(query string) *PathExpr`: parse a query string into an AST and panic on error.
+- `Compile(path *PathExpr) (Path, error)`: compile an AST into an executable `Path` function.
+- `MustCompile(path *PathExpr) Path`: compile an AST into an executable `Path` function and panic on error.
+- `Query(query string, document any) ([]any, error)`: parse, compile, and execute a query against a document with the default registry.
+- `MustQuery(query string, document any) []any`: parse, compile, and execute a query against a document with the default registry, panicking on error.
 
 ### Registry Management
 
-- `NewRegistry() *Registry`
-- `(*Registry).Parse(query string) (*PathExpr, error)`
-- `(*Registry).Compile(path *PathExpr) (Path, error)`
-- `(*Registry).Query(query string, document any) ([]any, error)`
-- `(*Registry).RegisterFunction(name string, def *FunctionDefinition) error`
-- `(*Registry).Clone() *Registry`
+- `NewRegistry() *Registry`: create an isolated registry preloaded with default JSONPath functions.
+- `(*Registry).Parse(query string) (*PathExpr, error)`: parse using this registry context.
+- `(*Registry).Compile(path *PathExpr) (Path, error)`: compile using this registry's function definitions.
+- `(*Registry).Query(query string, document any) ([]any, error)`: parse, compile, and execute using this registry.
+- `(*Registry).RegisterFunction(name string, arity int, fn Function) error`: register a scalar extension function with fixed arity.
+- `(*Registry).RegisterDefinition(name string, def *FunctionDefinition) error`: register a full custom function definition (validation + evaluation).
+- `(*Registry).Clone() *Registry`: copy the registry so function registration can diverge safely.
 
 Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
 
@@ -46,7 +48,7 @@ path, err := registry.Compile(pathExpr)
 if err != nil {
 	panic(err)
 }
-matches := path.Query(document)
+matches := path(document)
 ```
 
 ### One-step query
@@ -55,74 +57,26 @@ matches := path.Query(document)
 matches := jpath.MustQuery("$.store.book[*].title", document)
 ```
 
-### Compose a Path manually
-
-```go
-path := jpath.ComposePath(
-	jpath.ChildSegment(jpath.SelectName("store")),
-	jpath.ChildSegment(jpath.SelectName("book")),
-	jpath.ChildSegment(jpath.SelectWildcard()),
-	jpath.ChildSegment(jpath.SelectName("title")),
-)
-matches := path.Query(document)
-```
-
 ### Register an extension function
 
 ```go
 registry := jpath.NewRegistry()
-registry.MustRegisterFunction("startsWith", &jpath.FunctionDefinition{
-	Validate: func(args []jpath.FilterExpr, use jpath.FunctionUse, inComparison bool) error {
-		if len(args) != 2 {
-			return fmt.Errorf("invalid function arity")
-		}
-		if inComparison {
-			return fmt.Errorf("function result must not be compared")
-		}
-		return nil
-	},
-	Eval: func(args []*jpath.FunctionValue) *jpath.FunctionValue {
-		left, ok := args[0].Scalar.(string)
+registry.MustRegisterFunction(
+	"startsWith", 2, func(args ...any) (any, bool) {
+		left, ok := args[0].(string)
 		if !ok {
-			return &jpath.FunctionValue{Scalar: false}
+			return nil, false
 		}
-		right, ok := args[1].Scalar.(string)
+		right, ok := args[1].(string)
 		if !ok {
-			return &jpath.FunctionValue{Scalar: false}
+			return nil, false
 		}
-		return &jpath.FunctionValue{Scalar: strings.HasPrefix(left, right)}
+		return strings.HasPrefix(left, right), true
 	},
-})
+)
 ```
 
-## Errors
-
-`(*Registry).Query` wraps parse and compile failures with `ErrInvalidPath`.
-
-Parser errors for `errors.Is` checks:
-
-- `ErrExpectedRoot`
-- `ErrUnexpectedToken`
-- `ErrUnterminatedString`
-- `ErrBadEscape`
-- `ErrBadNumber`
-- `ErrBadSlice`
-- `ErrBadFunc`
-
-Registry function errors:
-
-- `ErrUnknownFunc`
-- `ErrBadFuncName`
-- `ErrBadFuncDefinition`
-- `ErrFuncExists`
-
-Function validation errors:
-
-- `ErrInvalidFuncArity`
-- `ErrFuncResultMustBeCompared`
-- `ErrFuncResultMustNotBeCompared`
-- `ErrFuncRequiresSingularQuery`
-- `ErrFuncRequiresQueryArgument`
+Use `RegisterDefinition` when you need full control over validation rules, node-list arguments, or custom result shapes
 
 ## Status
 

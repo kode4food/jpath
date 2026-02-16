@@ -134,24 +134,6 @@ func isSingularPath(path *PathExpr) bool {
 	return true
 }
 
-func validateLengthFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
-	return validateUnaryComparedSingular("length", args, use, inComparison)
-}
-
-func validateCountFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
-	return validateUnaryComparedReq("count", args, use, inComparison)
-}
-
-func validateValueFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
-	return validateUnaryComparedReq("value", args, use, inComparison)
-}
-
 func validateMatchSearchFunction(
 	args []FilterExpr, _ FunctionUse, inComparison bool,
 ) error {

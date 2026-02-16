@@ -6,62 +6,34 @@ import (
 )
 
 type (
-	evalValue struct {
-		kind   evalKind
-		scalar any
-		nodes  []any
-	}
+	FilterFunc func(*FilterCtx) *Value
 
-	evalCtx struct {
-		root    any
-		current any
+	FilterCtx struct {
+		Root    any
+		Current any
 	}
-
-	filterFunc func(*evalCtx) *evalValue
 
 	nothingType struct{}
-
-	evalKind uint8
-)
-
-const (
-	evalScalar evalKind = iota
-	evalNodes
 )
 
 var nothing nothingType
 
-func scalarValue(value any) *evalValue {
-	return &evalValue{kind: evalScalar, scalar: value}
+// ScalarValue constructs a scalar filter value
+func ScalarValue(value any) *Value {
+	return &Value{Scalar: value}
 }
 
-func nodesValue(v []any) *evalValue {
-	return &evalValue{kind: evalNodes, nodes: v}
+// NodesValue constructs a node-list filter value
+func NodesValue(v []any) *Value {
+	return &Value{IsNodes: true, Nodes: v}
 }
 
-func evalFunctionArgs(args []filterFunc, ctx *evalCtx) []*FunctionValue {
-	res := make([]*FunctionValue, len(args))
+func evalFunctionArgs(args []FilterFunc, ctx *FilterCtx) []*Value {
+	res := make([]*Value, len(args))
 	for idx, arg := range args {
-		res[idx] = toFunctionValue(arg(ctx))
+		res[idx] = arg(ctx)
 	}
 	return res
-}
-
-func toFunctionValue(v *evalValue) *FunctionValue {
-	if v.kind == evalNodes {
-		return &FunctionValue{
-			IsNodes: true,
-			Nodes:   v.nodes,
-		}
-	}
-	return &FunctionValue{Scalar: v.scalar}
-}
-
-func fromFunctionValue(v *FunctionValue) *evalValue {
-	if v.IsNodes {
-		return nodesValue(v.Nodes)
-	}
-	return scalarValue(v.Scalar)
 }
 
 func compareEmptyEq(left, right []any) bool {
@@ -90,7 +62,7 @@ func compareEmptyNe(left, right []any) bool {
 	return true
 }
 
-func compareValuesEq(left, right *evalValue) bool {
+func compareValuesEq(left, right *Value) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -106,7 +78,7 @@ func compareValuesEq(left, right *evalValue) bool {
 	return false
 }
 
-func compareValuesNe(left, right *evalValue) bool {
+func compareValuesNe(left, right *Value) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -122,7 +94,7 @@ func compareValuesNe(left, right *evalValue) bool {
 	return false
 }
 
-func compareValuesLt(left, right *evalValue) bool {
+func compareValuesLt(left, right *Value) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -138,7 +110,7 @@ func compareValuesLt(left, right *evalValue) bool {
 	return false
 }
 
-func compareValuesLe(left, right *evalValue) bool {
+func compareValuesLe(left, right *Value) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -157,7 +129,7 @@ func compareValuesLe(left, right *evalValue) bool {
 	return false
 }
 
-func compareValuesGt(left, right *evalValue) bool {
+func compareValuesGt(left, right *Value) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -173,7 +145,7 @@ func compareValuesGt(left, right *evalValue) bool {
 	return false
 }
 
-func compareValuesGe(left, right *evalValue) bool {
+func compareValuesGe(left, right *Value) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -220,18 +192,18 @@ func greaterThan(left, right any) (bool, bool) {
 	return false, false
 }
 
-func expandCandidates(v *evalValue) []any {
-	if v.kind == evalNodes {
-		return v.nodes
+func expandCandidates(v *Value) []any {
+	if v.IsNodes {
+		return v.Nodes
 	}
-	return []any{v.scalar}
+	return []any{v.Scalar}
 }
 
-func toBool(v *evalValue) bool {
-	if v.kind == evalNodes {
-		return len(v.nodes) > 0
+func toBool(v *Value) bool {
+	if v.IsNodes {
+		return len(v.Nodes) > 0
 	}
-	switch raw := v.scalar.(type) {
+	switch raw := v.Scalar.(type) {
 	case nil:
 		return false
 	case nothingType:

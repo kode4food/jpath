@@ -61,7 +61,8 @@ func SelectSlice(s *SliceExpr) SelectorFunc {
 	return maker(plan)
 }
 
-func selectFilter(filter filterFunc) SelectorFunc {
+// SelectFilter builds a selector for filter-based child selection
+func SelectFilter(filter FilterFunc) SelectorFunc {
 	return func(out []any, node, root any) []any {
 		return appendFilter(out, node, root, filter)
 	}
@@ -81,12 +82,12 @@ func appendWildcard(out []any, node any) []any {
 	}
 }
 
-func appendFilter(out []any, node, root any, flt filterFunc) []any {
-	ctx := &evalCtx{root: root}
+func appendFilter(out []any, node, root any, flt FilterFunc) []any {
+	ctx := &FilterCtx{Root: root}
 	switch v := node.(type) {
 	case []any:
 		for _, elem := range v {
-			ctx.current = elem
+			ctx.Current = elem
 			if toBool(flt(ctx)) {
 				out = append(out, elem)
 			}
@@ -95,7 +96,7 @@ func appendFilter(out []any, node, root any, flt filterFunc) []any {
 	case map[string]any:
 		for _, k := range sortedKeys(v) {
 			elem := v[k]
-			ctx.current = elem
+			ctx.Current = elem
 			if toBool(flt(ctx)) {
 				out = append(out, elem)
 			}

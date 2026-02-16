@@ -74,36 +74,27 @@ func compileSelector(
 		if err != nil {
 			return nil, err
 		}
-		return selectFilter(filter), nil
+		return SelectFilter(filter), nil
 
 	default:
 		return nil, fmt.Errorf("unknown selector kind")
 	}
 }
 
-func compileFilter(
-	expr FilterExpr, registry *Registry,
-) (filterFunc, error) {
+func compileFilter(expr FilterExpr, registry *Registry) (FilterFunc, error) {
 	switch v := expr.(type) {
 	case *LiteralExpr:
-		value := v.Value
-		return func(_ *evalCtx) *evalValue {
-			return scalarValue(value)
-		}, nil
+		return Literal(v.Value), nil
 
 	case *PathValueExpr:
 		path, err := makePath(v.Path, registry)
 		if err != nil {
 			return nil, err
 		}
-		absolute := v.Absolute
-		return func(ctx *evalCtx) *evalValue {
-			base := ctx.current
-			if absolute {
-				base = ctx.root
-			}
-			return nodesValue(path.Query(base))
-		}, nil
+		if v.Absolute {
+			return PathRoot(path), nil
+		}
+		return PathCurrent(path), nil
 
 	case *UnaryExpr:
 		exprFunc, err := compileFilter(v.Expr, registry)
@@ -111,7 +102,7 @@ func compileFilter(
 			return nil, err
 		}
 		if v.Op == "!" {
-			return makeNot(exprFunc), nil
+			return Not(exprFunc), nil
 		}
 		return nil, fmt.Errorf("unknown unary operator: %s", v.Op)
 
@@ -126,27 +117,27 @@ func compileFilter(
 		}
 		switch v.Op {
 		case "&&":
-			return makeAnd(leftFunc, rightFunc), nil
+			return And(leftFunc, rightFunc), nil
 		case "||":
-			return makeOr(leftFunc, rightFunc), nil
+			return Or(leftFunc, rightFunc), nil
 		case "==":
-			return makeEq(leftFunc, rightFunc), nil
+			return Eq(leftFunc, rightFunc), nil
 		case "!=":
-			return makeNe(leftFunc, rightFunc), nil
+			return Ne(leftFunc, rightFunc), nil
 		case "<":
-			return makeLt(leftFunc, rightFunc), nil
+			return Lt(leftFunc, rightFunc), nil
 		case "<=":
-			return makeLe(leftFunc, rightFunc), nil
+			return Le(leftFunc, rightFunc), nil
 		case ">":
-			return makeGt(leftFunc, rightFunc), nil
+			return Gt(leftFunc, rightFunc), nil
 		case ">=":
-			return makeGe(leftFunc, rightFunc), nil
+			return Ge(leftFunc, rightFunc), nil
 		default:
 			return nil, fmt.Errorf("unknown operator: %s", v.Op)
 		}
 
 	case *FuncExpr:
-		args := make([]filterFunc, len(v.Args))
+		args := make([]FilterFunc, len(v.Args))
 		for idx, arg := range v.Args {
 			compiled, err := compileFilter(arg, registry)
 			if err != nil {
@@ -158,79 +149,9 @@ func compileFilter(
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUnknownFunc, v.Name)
 		}
-		return makeCall(def.Eval, args), nil
+		return Call(def.Eval, args...), nil
 
 	default:
 		return nil, fmt.Errorf("unknown filter expression")
-	}
-}
-
-func makeNot(expr filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(!toBool(expr(ctx)))
-	}
-}
-
-func makeAnd(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		leftValue := left(ctx)
-		if !toBool(leftValue) {
-			return scalarValue(false)
-		}
-		return scalarValue(toBool(right(ctx)))
-	}
-}
-
-func makeOr(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		leftValue := left(ctx)
-		if toBool(leftValue) {
-			return scalarValue(true)
-		}
-		return scalarValue(toBool(right(ctx)))
-	}
-}
-
-func makeEq(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(compareValuesEq(left(ctx), right(ctx)))
-	}
-}
-
-func makeNe(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(compareValuesNe(left(ctx), right(ctx)))
-	}
-}
-
-func makeLt(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(compareValuesLt(left(ctx), right(ctx)))
-	}
-}
-
-func makeLe(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(compareValuesLe(left(ctx), right(ctx)))
-	}
-}
-
-func makeGt(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(compareValuesGt(left(ctx), right(ctx)))
-	}
-}
-
-func makeGe(left, right filterFunc) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return scalarValue(compareValuesGe(left(ctx), right(ctx)))
-	}
-}
-
-func makeCall(
-	evaluator FunctionEvaluator, args []filterFunc,
-) filterFunc {
-	return func(ctx *evalCtx) *evalValue {
-		return fromFunctionValue(evaluator(evalFunctionArgs(args, ctx)))
 	}
 }

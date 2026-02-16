@@ -2,6 +2,7 @@ package jpath_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ func TestRegistryParseCompileQuery(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	got := path.Query([]any{float64(10), float64(20), float64(30)})
+	got := path([]any{float64(10), float64(20), float64(30)})
 	assert.Equal(t, []any{float64(20)}, got)
 }
 
@@ -29,7 +30,7 @@ func TestRegistryMustHelpers(t *testing.T) {
 
 	ast := reg.MustParse("$[0]")
 	path := reg.MustCompile(ast)
-	got := path.Query([]any{float64(1)})
+	got := path([]any{float64(1)})
 	assert.Equal(t, []any{float64(1)}, got)
 
 	got = reg.MustQuery("$[0]", []any{float64(7)})
@@ -83,7 +84,7 @@ func TestRegistrySliceSpecializations(t *testing.T) {
 
 func TestRegistryExtensionFunction(t *testing.T) {
 	reg := jpath.NewRegistry()
-	err := reg.RegisterFunction("alwaysTrue", &jpath.FunctionDefinition{
+	err := reg.RegisterDefinition("alwaysTrue", &jpath.FunctionDefinition{
 		Validate: func(
 			args []jpath.FilterExpr, _ jpath.FunctionUse, _ bool,
 		) error {
@@ -92,8 +93,8 @@ func TestRegistryExtensionFunction(t *testing.T) {
 			}
 			return nil
 		},
-		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-			return &jpath.FunctionValue{Scalar: true}
+		Eval: func(_ []*jpath.Value) *jpath.Value {
+			return &jpath.Value{Scalar: true}
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -110,11 +111,91 @@ func TestRegistryExtensionFunction(t *testing.T) {
 	assert.Equal(t, []any{float64(1), float64(2)}, got)
 }
 
+func TestRegistryRegisterFunction(t *testing.T) {
+	reg := jpath.NewRegistry()
+	err := reg.RegisterFunction(
+		"startsWith", 2, func(args ...any) (any, bool) {
+			left, ok := args[0].(string)
+			if !ok {
+				return nil, false
+			}
+			right, ok := args[1].(string)
+			if !ok {
+				return nil, false
+			}
+			return strings.HasPrefix(left, right), true
+		},
+	)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	doc := []any{
+		map[string]any{"name": "alpha"},
+		map[string]any{"name": "beta"},
+	}
+	got, err := reg.Query("$[?startsWith(@.name, 'al')]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{doc[0]}, got)
+}
+
+func TestRegistryRegisterFunctionArityValidation(t *testing.T) {
+	reg := jpath.NewRegistry()
+	err := reg.RegisterFunction(
+		"startsWith", 2, func(args ...any) (any, bool) {
+			return true, true
+		},
+	)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	_, err = reg.Query("$[?startsWith(@.name)]", []any{
+		map[string]any{"name": "alpha"},
+	})
+	assert.ErrorIs(t, err, jpath.ErrInvalidPath)
+	assert.ErrorIs(t, err, jpath.ErrInvalidFuncArity)
+}
+
+func TestRegistryRegisterFunctionSingularCoercion(t *testing.T) {
+	reg := jpath.NewRegistry()
+	err := reg.RegisterFunction(
+		"isPositive", 1, func(args ...any) (any, bool) {
+			n, ok := args[0].(float64)
+			if !ok {
+				return nil, false
+			}
+			return n > 0, true
+		},
+	)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	doc := []any{
+		map[string]any{"vals": []any{float64(1), float64(2)}},
+		map[string]any{"vals": []any{float64(-1), float64(-2)}},
+	}
+	got, err := reg.Query("$[?isPositive(@.vals[0])]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{doc[0]}, got)
+
+	got, err = reg.Query("$[?isPositive(@.vals[*])]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Empty(t, got)
+}
+
 func TestRegistryExtensionFunctionNodes(t *testing.T) {
 	reg := jpath.NewRegistry()
-	err := reg.RegisterFunction("nodeTruthy", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-			return &jpath.FunctionValue{
+	err := reg.RegisterDefinition("nodeTruthy", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.Value) *jpath.Value {
+			return &jpath.Value{
 				IsNodes: true,
 				Nodes:   []any{float64(1)},
 			}
@@ -133,14 +214,14 @@ func TestRegistryExtensionFunctionNodes(t *testing.T) {
 func TestRegistryFunctionIsolation(t *testing.T) {
 	base := jpath.NewRegistry()
 	sandbox := base.Clone()
-	err := sandbox.RegisterFunction("alwaysFalse", &jpath.FunctionDefinition{
+	err := sandbox.RegisterDefinition("alwaysFalse", &jpath.FunctionDefinition{
 		Validate: func(
 			_ []jpath.FilterExpr, _ jpath.FunctionUse, _ bool,
 		) error {
 			return nil
 		},
-		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-			return &jpath.FunctionValue{Scalar: false}
+		Eval: func(_ []*jpath.Value) *jpath.Value {
+			return &jpath.Value{Scalar: false}
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -157,50 +238,70 @@ func TestRegistryFunctionIsolation(t *testing.T) {
 
 func TestRegistryRegisterFunctionErrors(t *testing.T) {
 	reg := jpath.NewRegistry()
-	err := reg.RegisterFunction("1bad", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-			return &jpath.FunctionValue{}
+	err := reg.RegisterDefinition("1bad", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.Value) *jpath.Value {
+			return &jpath.Value{}
 		},
 	})
 	assert.ErrorIs(t, err, jpath.ErrBadFuncName)
 
-	err = reg.RegisterFunction("x", &jpath.FunctionDefinition{})
+	err = reg.RegisterDefinition("x", &jpath.FunctionDefinition{})
 	assert.ErrorIs(t, err, jpath.ErrBadFuncDefinition)
 
-	err = reg.RegisterFunction("dup", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-			return &jpath.FunctionValue{}
+	err = reg.RegisterDefinition("dup", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.Value) *jpath.Value {
+			return &jpath.Value{}
 		},
 	})
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	err = reg.RegisterFunction("dup", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-			return &jpath.FunctionValue{}
+	err = reg.RegisterDefinition("dup", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.Value) *jpath.Value {
+			return &jpath.Value{}
 		},
 	})
 	assert.ErrorIs(t, err, jpath.ErrFuncExists)
+}
+
+func TestMustRegisterDefinition(t *testing.T) {
+	reg := jpath.NewRegistry()
+
+	assert.NotPanics(t, func() {
+		reg.MustRegisterDefinition("alwaysTrue", &jpath.FunctionDefinition{
+			Eval: func(_ []*jpath.Value) *jpath.Value {
+				return &jpath.Value{Scalar: true}
+			},
+		})
+	})
+
+	assert.Panics(t, func() {
+		reg.MustRegisterDefinition("alwaysTrue", &jpath.FunctionDefinition{
+			Eval: func(_ []*jpath.Value) *jpath.Value {
+				return &jpath.Value{Scalar: true}
+			},
+		})
+	})
 }
 
 func TestMustRegisterFunction(t *testing.T) {
 	reg := jpath.NewRegistry()
 
 	assert.NotPanics(t, func() {
-		reg.MustRegisterFunction("alwaysTrue", &jpath.FunctionDefinition{
-			Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-				return &jpath.FunctionValue{Scalar: true}
+		reg.MustRegisterFunction(
+			"alwaysTrue", 0, func(args ...any) (any, bool) {
+				return true, true
 			},
-		})
+		)
 	})
 
 	assert.Panics(t, func() {
-		reg.MustRegisterFunction("alwaysTrue", &jpath.FunctionDefinition{
-			Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
-				return &jpath.FunctionValue{Scalar: true}
+		reg.MustRegisterFunction(
+			"alwaysTrue", 0, func(args ...any) (any, bool) {
+				return true, true
 			},
-		})
+		)
 	})
 }
 

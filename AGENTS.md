@@ -38,10 +38,11 @@ For grouped declarations:
 Within a file, order callables as follows:
 
 1. Constructors (`New...`)
-2. Exported functions
-3. Exported methods
-4. Unexported methods
-5. Unexported helper functions
+2. Exported methods of exported types
+3. Unexported methods of exported types
+4. Methods of unexported types
+5. Exported functions
+6. Unexported helper functions
 
 For exported receiver types:
 
