@@ -24,21 +24,6 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 | `MustQuery(query string, document any) []any` | Parse, compile, and execute a query against a document with the default registry, panicking on error |
 | `Path func(document any) []any` | Compiled query function returned by `Compile` |
 
-## Registry Management
-
-| Signature | Description |
-| --- | --- |
-| `NewRegistry() *Registry` | Create an isolated registry preloaded with default JSONPath functions |
-| `.Parse(query string) (*PathExpr, error)` | Parse using this registry context |
-| `.Compile(path *PathExpr) (Path, error)` | Compile using this registry's function definitions |
-| `.Query(query string, document any) ([]any, error)` | Parse, compile, and execute using this registry |
-| `.RegisterFunction(name string, arity int, fn Function) error` | Register a scalar extension function with fixed arity |
-| `.RegisterDefinition(name string, def *FunctionDefinition) error` | Register a full custom function definition (validation + evaluation) |
-| `.Clone() *Registry` | Copy the registry so function registration can diverge safely |
-
-Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
-
-## Usage
 
 ### Parse, compile, and run
 
@@ -60,6 +45,20 @@ matches := path(document)
 ```go
 matches := jpath.MustQuery("$.store.book[*].title", document)
 ```
+
+## Registry Management
+
+| Signature | Description |
+| --- | --- |
+| `NewRegistry() *Registry` | Create an isolated registry preloaded with default JSONPath functions |
+| `.Parse(query string) (*PathExpr, error)` | Parse using this registry context |
+| `.Compile(path *PathExpr) (Path, error)` | Compile using this registry's function definitions |
+| `.Query(query string, document any) ([]any, error)` | Parse, compile, and execute using this registry |
+| `.RegisterFunction(name string, arity int, fn Function) error` | Register a scalar extension function with fixed arity |
+| `.RegisterDefinition(name string, def *FunctionDefinition) error` | Register a full custom function definition (validation + evaluation) |
+| `.Clone() *Registry` | Copy the registry so function registration can diverge safely |
+
+Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
 
 ### Register an extension function
 
