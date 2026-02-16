@@ -12,15 +12,6 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 - Keep registries isolated for sandboxed behavior
 - Run JSONPath compliance suite fixtures in tests
 
-## Architecture
-
-- `parser.go` + `ast.go`: parse query strings into inspectable AST nodes
-- `compile.go`: compile AST nodes into function composition (`SegmentFunc`/`SelectorFunc`)
-- `path.go`: path-level composition and segment chaining
-- `selector.go`: selector entry points (`SelectName`, `SelectIndex`, `SelectWildcard`, `SelectSlice`, filters)
-- `slice.go`: slice specialization and selector builders chosen at compile time
-- `eval.go` + `builtin.go` + `validate.go`: filter/function evaluation and validation
-
 ## Core API
 
 - `Parse(query string) (*PathExpr, error)`
