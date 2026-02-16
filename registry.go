@@ -9,7 +9,7 @@ import (
 type (
 	// Registry stores function definitions and owns parse/compile/query methods
 	Registry struct {
-		functions map[string]FunctionDefinition
+		functions map[string]*FunctionDefinition
 	}
 
 	// FunctionDefinition describes a filter function implementation
@@ -24,7 +24,7 @@ type (
 	) error
 
 	// FunctionEvaluator evaluates arguments and returns a function result
-	FunctionEvaluator func(args []FunctionValue) FunctionValue
+	FunctionEvaluator func(args []*FunctionValue) *FunctionValue
 
 	// FunctionValue stores either a scalar or node list argument/result
 	FunctionValue struct {
@@ -60,7 +60,7 @@ var (
 // NewRegistry creates a registry with default JSONPath functions
 func NewRegistry() *Registry {
 	res := &Registry{
-		functions: map[string]FunctionDefinition{},
+		functions: map[string]*FunctionDefinition{},
 	}
 	registerDefaultFunctions(res)
 	return res
@@ -74,7 +74,7 @@ func (r *Registry) Clone() *Registry {
 }
 
 // RegisterFunction registers a named function in this registry
-func (r *Registry) RegisterFunction(name string, def FunctionDefinition) error {
+func (r *Registry) RegisterFunction(name string, def *FunctionDefinition) error {
 	if !isValidFunctionName(name) {
 		return fmt.Errorf("%w: %s", ErrBadFunctionName, name)
 	}
@@ -82,7 +82,7 @@ func (r *Registry) RegisterFunction(name string, def FunctionDefinition) error {
 		return fmt.Errorf("%w: %s", ErrBadFunctionDefinition, name)
 	}
 	if r.functions == nil {
-		r.functions = map[string]FunctionDefinition{}
+		r.functions = map[string]*FunctionDefinition{}
 		registerDefaultFunctions(r)
 	}
 	if _, ok := r.functions[name]; ok {
@@ -94,7 +94,7 @@ func (r *Registry) RegisterFunction(name string, def FunctionDefinition) error {
 
 // MustRegisterFunction registers a function or panics
 func (r *Registry) MustRegisterFunction(
-	name string, def FunctionDefinition,
+	name string, def *FunctionDefinition,
 ) *Registry {
 	if err := r.RegisterFunction(name, def); err != nil {
 		panic(err)
@@ -103,13 +103,13 @@ func (r *Registry) MustRegisterFunction(
 }
 
 // Parse parses a query string into a syntax tree
-func (r *Registry) Parse(query string) (PathExpr, error) {
+func (r *Registry) Parse(query string) (*PathExpr, error) {
 	var p Parser
 	return p.Parse(query)
 }
 
 // MustParse parses a query string or panics
-func (r *Registry) MustParse(query string) PathExpr {
+func (r *Registry) MustParse(query string) *PathExpr {
 	res, err := r.Parse(query)
 	if err != nil {
 		panic(err)
@@ -118,13 +118,13 @@ func (r *Registry) MustParse(query string) PathExpr {
 }
 
 // Compile compiles a parsed syntax tree into an executable Path
-func (r *Registry) Compile(path PathExpr) (Path, error) {
+func (r *Registry) Compile(path *PathExpr) (*Path, error) {
 	c := &Compiler{registry: r}
 	return c.Compile(path)
 }
 
 // MustCompile compiles a parsed syntax tree or panics
-func (r *Registry) MustCompile(path PathExpr) Path {
+func (r *Registry) MustCompile(path *PathExpr) *Path {
 	res, err := r.Compile(path)
 	if err != nil {
 		panic(err)
@@ -154,7 +154,7 @@ func (r *Registry) MustQuery(query string, document any) []any {
 	return res
 }
 
-func (r *Registry) function(name string) (FunctionDefinition, bool) {
+func (r *Registry) function(name string) (*FunctionDefinition, bool) {
 	def, ok := r.functions[name]
 	return def, ok
 }

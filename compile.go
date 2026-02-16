@@ -13,19 +13,19 @@ func NewCompiler() *Compiler {
 }
 
 // Compile compiles a parsed PathExpr into an executable Path
-func (c *Compiler) Compile(path PathExpr) (Path, error) {
+func (c *Compiler) Compile(path *PathExpr) (*Path, error) {
 	return compilePath(path, c.registry)
 }
 
-func compilePath(path PathExpr, registry *Registry) (Path, error) {
+func compilePath(path *PathExpr, registry *Registry) (*Path, error) {
 	if err := validatePath(path, registry); err != nil {
-		return Path{}, err
+		return nil, err
 	}
 	return makePath(path, registry)
 }
 
-func makePath(path PathExpr, registry *Registry) (Path, error) {
-	res := Path{}
+func makePath(path *PathExpr, registry *Registry) (*Path, error) {
+	res := &Path{}
 	for _, sg := range path.Segments {
 		if sg.Descendant {
 			res.Code = append(res.Code, Instruction{Op: OpDescend})
@@ -33,9 +33,9 @@ func makePath(path PathExpr, registry *Registry) (Path, error) {
 		segStart := len(res.Code)
 		res.Code = append(res.Code, Instruction{Op: OpSegmentStart})
 		for _, sl := range sg.Selectors {
-			inst, err := compileSelector(sl, &res, registry)
+			inst, err := compileSelector(sl, res, registry)
 			if err != nil {
-				return Path{}, err
+				return nil, err
 			}
 			res.Code = append(res.Code, inst)
 		}
@@ -47,13 +47,19 @@ func makePath(path PathExpr, registry *Registry) (Path, error) {
 }
 
 func compileSelector(
-	sel SelectorExpr, run *Path, registry *Registry,
+	sel *SelectorExpr, run *Path, registry *Registry,
 ) (Instruction, error) {
 	switch sel.Kind {
 	case SelectorName:
-		return Instruction{Op: OpSelectName, Arg: run.addConst(sel.Name)}, nil
+		return Instruction{
+			Op:  OpSelectName,
+			Arg: run.addConst(sel.Name),
+		}, nil
 	case SelectorIndex:
-		return Instruction{Op: OpSelectIndex, Arg: run.addConst(sel.Index)}, nil
+		return Instruction{
+			Op:  OpSelectIndex,
+			Arg: run.addConst(sel.Index),
+		}, nil
 	case SelectorWildcard:
 		return Instruction{Op: OpSelectWildcard}, nil
 	case SelectorSlice:
@@ -72,7 +78,7 @@ func compileSelector(
 	}
 }
 
-func compileSlice(s SliceExpr, run *Path) Instruction {
+func compileSlice(s *SliceExpr, run *Path) Instruction {
 	if s.Step == 0 {
 		return Instruction{Op: OpSelectSliceEmpty}
 	}
@@ -80,7 +86,7 @@ func compileSlice(s SliceExpr, run *Path) Instruction {
 		return Instruction{Op: OpSelectArrayAll}
 	}
 
-	plan := SlicePlan{Step: s.Step}
+	plan := &SlicePlan{Step: s.Step}
 	if s.HasStart {
 		plan.Start = s.Start
 	}
@@ -93,14 +99,14 @@ func compileSlice(s SliceExpr, run *Path) Instruction {
 	}
 }
 
-func sliceOpcode(s SliceExpr) Opcode {
+func sliceOpcode(s *SliceExpr) Opcode {
 	if s.Step > 0 {
 		return sliceForwardOpcode(s)
 	}
 	return sliceBackwardOpcode(s)
 }
 
-func sliceForwardOpcode(s SliceExpr) Opcode {
+func sliceForwardOpcode(s *SliceExpr) Opcode {
 	switch {
 	case !s.HasStart && !s.HasEnd:
 		return OpSelectSliceF00
@@ -113,7 +119,7 @@ func sliceForwardOpcode(s SliceExpr) Opcode {
 	}
 }
 
-func sliceBackwardOpcode(s SliceExpr) Opcode {
+func sliceBackwardOpcode(s *SliceExpr) Opcode {
 	switch {
 	case !s.HasStart && !s.HasEnd:
 		return OpSelectSliceB00
@@ -182,22 +188,24 @@ func sliceBackwardRangeOpcode(start, end int) Opcode {
 
 func compileFilter(expr FilterExpr, registry *Registry) (FilterExpr, error) {
 	switch v := expr.(type) {
-	case LiteralExpr:
+	case *LiteralExpr:
 		return v, nil
-	case PathValueExpr:
+	case *PathValueExpr:
 		path, err := makePath(v.Path, registry)
 		if err != nil {
 			return nil, err
 		}
-		return compiledPathValueExpr{absolute: v.Absolute, path: path}, nil
-	case UnaryExpr:
+		return &compiledPathValueExpr{
+			absolute: v.Absolute,
+			path:     path,
+		}, nil
+	case *UnaryExpr:
 		ex, err := compileFilter(v.Expr, registry)
 		if err != nil {
 			return nil, err
 		}
-		v.Expr = ex
-		return v, nil
-	case BinaryExpr:
+		return &UnaryExpr{Op: v.Op, Expr: ex}, nil
+	case *BinaryExpr:
 		left, err := compileFilter(v.Left, registry)
 		if err != nil {
 			return nil, err
@@ -206,10 +214,12 @@ func compileFilter(expr FilterExpr, registry *Registry) (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		v.Left = left
-		v.Right = right
-		return v, nil
-	case FuncExpr:
+		return &BinaryExpr{
+			Op:    v.Op,
+			Left:  left,
+			Right: right,
+		}, nil
+	case *FuncExpr:
 		args := make([]FilterExpr, len(v.Args))
 		for idx, arg := range v.Args {
 			compiled, err := compileFilter(arg, registry)
@@ -222,7 +232,7 @@ func compileFilter(expr FilterExpr, registry *Registry) (FilterExpr, error) {
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUnknownFunction, v.Name)
 		}
-		return compiledFuncExpr{
+		return &compiledFuncExpr{
 			evaluator: def.Eval,
 			args:      args,
 		}, nil

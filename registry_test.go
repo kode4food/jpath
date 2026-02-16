@@ -46,11 +46,11 @@ func TestRegistryMustHelpersPanic(t *testing.T) {
 		_ = reg.MustQuery("", nil)
 	})
 	assert.Panics(t, func() {
-		_ = reg.MustCompile(jpath.PathExpr{
-			Segments: []jpath.SegmentExpr{{
-				Selectors: []jpath.SelectorExpr{{
+		_ = reg.MustCompile(&jpath.PathExpr{
+			Segments: []*jpath.SegmentExpr{{
+				Selectors: []*jpath.SelectorExpr{{
 					Kind:   jpath.SelectorFilter,
-					Filter: jpath.LiteralExpr{Value: true},
+					Filter: &jpath.LiteralExpr{Value: true},
 				}},
 			}},
 		})
@@ -83,7 +83,7 @@ func TestRegistrySliceSpecializations(t *testing.T) {
 
 func TestRegistryExtensionFunction(t *testing.T) {
 	reg := jpath.NewRegistry()
-	err := reg.RegisterFunction("alwaysTrue", jpath.FunctionDefinition{
+	err := reg.RegisterFunction("alwaysTrue", &jpath.FunctionDefinition{
 		Validate: func(
 			args []jpath.FilterExpr, _ jpath.FunctionUse, _ bool,
 		) error {
@@ -92,8 +92,8 @@ func TestRegistryExtensionFunction(t *testing.T) {
 			}
 			return nil
 		},
-		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-			return jpath.FunctionValue{Scalar: true}
+		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+			return &jpath.FunctionValue{Scalar: true}
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -112,9 +112,9 @@ func TestRegistryExtensionFunction(t *testing.T) {
 
 func TestRegistryExtensionFunctionNodes(t *testing.T) {
 	reg := jpath.NewRegistry()
-	err := reg.RegisterFunction("nodeTruthy", jpath.FunctionDefinition{
-		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-			return jpath.FunctionValue{
+	err := reg.RegisterFunction("nodeTruthy", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+			return &jpath.FunctionValue{
 				IsNodes: true,
 				Nodes:   []any{float64(1)},
 			}
@@ -133,14 +133,14 @@ func TestRegistryExtensionFunctionNodes(t *testing.T) {
 func TestRegistryFunctionIsolation(t *testing.T) {
 	base := jpath.NewRegistry()
 	sandbox := base.Clone()
-	err := sandbox.RegisterFunction("alwaysFalse", jpath.FunctionDefinition{
+	err := sandbox.RegisterFunction("alwaysFalse", &jpath.FunctionDefinition{
 		Validate: func(
 			_ []jpath.FilterExpr, _ jpath.FunctionUse, _ bool,
 		) error {
 			return nil
 		},
-		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-			return jpath.FunctionValue{Scalar: false}
+		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+			return &jpath.FunctionValue{Scalar: false}
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -157,28 +157,28 @@ func TestRegistryFunctionIsolation(t *testing.T) {
 
 func TestRegistryRegisterFunctionErrors(t *testing.T) {
 	reg := jpath.NewRegistry()
-	err := reg.RegisterFunction("1bad", jpath.FunctionDefinition{
-		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-			return jpath.FunctionValue{}
+	err := reg.RegisterFunction("1bad", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+			return &jpath.FunctionValue{}
 		},
 	})
 	assert.ErrorIs(t, err, jpath.ErrBadFunctionName)
 
-	err = reg.RegisterFunction("x", jpath.FunctionDefinition{})
+	err = reg.RegisterFunction("x", &jpath.FunctionDefinition{})
 	assert.ErrorIs(t, err, jpath.ErrBadFunctionDefinition)
 
-	err = reg.RegisterFunction("dup", jpath.FunctionDefinition{
-		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-			return jpath.FunctionValue{}
+	err = reg.RegisterFunction("dup", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+			return &jpath.FunctionValue{}
 		},
 	})
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	err = reg.RegisterFunction("dup", jpath.FunctionDefinition{
-		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-			return jpath.FunctionValue{}
+	err = reg.RegisterFunction("dup", &jpath.FunctionDefinition{
+		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+			return &jpath.FunctionValue{}
 		},
 	})
 	assert.ErrorIs(t, err, jpath.ErrFunctionExists)
@@ -188,17 +188,17 @@ func TestMustRegisterFunction(t *testing.T) {
 	reg := jpath.NewRegistry()
 
 	assert.NotPanics(t, func() {
-		reg.MustRegisterFunction("alwaysTrue", jpath.FunctionDefinition{
-			Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-				return jpath.FunctionValue{Scalar: true}
+		reg.MustRegisterFunction("alwaysTrue", &jpath.FunctionDefinition{
+			Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+				return &jpath.FunctionValue{Scalar: true}
 			},
 		})
 	})
 
 	assert.Panics(t, func() {
-		reg.MustRegisterFunction("alwaysTrue", jpath.FunctionDefinition{
-			Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
-				return jpath.FunctionValue{Scalar: true}
+		reg.MustRegisterFunction("alwaysTrue", &jpath.FunctionDefinition{
+			Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
+				return &jpath.FunctionValue{Scalar: true}
 			},
 		})
 	})

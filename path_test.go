@@ -12,8 +12,8 @@ func TestPathSelectorMisses(t *testing.T) {
 	consts := []any{
 		"name",
 		0,
-		jpath.SlicePlan{Start: 0, End: 1, Step: 1},
-		jpath.LiteralExpr{Value: true},
+		&jpath.SlicePlan{Start: 0, End: 1, Step: 1},
+		&jpath.LiteralExpr{Value: true},
 	}
 	run := func(op jpath.Opcode, arg int, node any) []any {
 		p := &jpath.Path{
@@ -64,8 +64,8 @@ func TestPathInvalidProgramPanics(t *testing.T) {
 	consts := []any{
 		"name",
 		0,
-		jpath.SlicePlan{Start: 0, End: 1, Step: 1},
-		jpath.LiteralExpr{Value: true},
+		&jpath.SlicePlan{Start: 0, End: 1, Step: 1},
+		&jpath.LiteralExpr{Value: true},
 	}
 	ops := []jpath.Opcode{
 		jpath.OpSegmentEnd,

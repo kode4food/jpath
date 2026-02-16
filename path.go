@@ -122,7 +122,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF00(top.out, arr, plan.Step)
 			PC++
 
@@ -133,7 +133,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF10P(top.out, arr, plan.Start, plan.Step)
 			PC++
 
@@ -144,7 +144,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF10N(top.out, arr, plan.Start, plan.Step)
 			PC++
 
@@ -155,7 +155,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF01P(top.out, arr, plan.End, plan.Step)
 			PC++
 
@@ -166,7 +166,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF01N(top.out, arr, plan.End, plan.Step)
 			PC++
 
@@ -177,7 +177,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF11PP(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -190,7 +190,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF11PN(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -203,7 +203,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF11NP(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -216,7 +216,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceF11NN(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -229,7 +229,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB00(top.out, arr, plan.Step)
 			PC++
 
@@ -240,7 +240,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB10P(top.out, arr, plan.Start, plan.Step)
 			PC++
 
@@ -251,7 +251,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB10N(top.out, arr, plan.Start, plan.Step)
 			PC++
 
@@ -262,7 +262,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB01P(top.out, arr, plan.End, plan.Step)
 			PC++
 
@@ -273,7 +273,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB01N(top.out, arr, plan.End, plan.Step)
 			PC++
 
@@ -284,7 +284,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB11PP(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -297,7 +297,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB11PN(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -310,7 +310,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB11NP(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)
@@ -323,7 +323,7 @@ func (p *Path) Query(document any) []any {
 				PC++
 				continue
 			}
-			plan := p.Constants[INST.Arg].(SlicePlan)
+			plan := p.Constants[INST.Arg].(*SlicePlan)
 			top.out = appendSliceB11NN(
 				top.out, arr, plan.Start, plan.End, plan.Step,
 			)

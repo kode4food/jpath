@@ -70,10 +70,10 @@ func TestRawFilterPathValueEval(t *testing.T) {
 		map[string]any{"x": []any{float64(1)}, "id": float64(1)},
 		map[string]any{"id": float64(2)},
 	}
-	rel := jpath.PathValueExpr{
-		Path: jpath.PathExpr{
-			Segments: []jpath.SegmentExpr{{
-				Selectors: []jpath.SelectorExpr{{
+	rel := &jpath.PathValueExpr{
+		Path: &jpath.PathExpr{
+			Segments: []*jpath.SegmentExpr{{
+				Selectors: []*jpath.SelectorExpr{{
 					Kind: jpath.SelectorName,
 					Name: "x",
 				}},
@@ -83,11 +83,11 @@ func TestRawFilterPathValueEval(t *testing.T) {
 	got := runRawFilter(rel, doc)
 	assert.Equal(t, []any{doc[0]}, got)
 
-	abs := jpath.PathValueExpr{
+	abs := &jpath.PathValueExpr{
 		Absolute: true,
-		Path: jpath.PathExpr{
-			Segments: []jpath.SegmentExpr{{
-				Selectors: []jpath.SelectorExpr{{
+		Path: &jpath.PathExpr{
+			Segments: []*jpath.SegmentExpr{{
+				Selectors: []*jpath.SelectorExpr{{
 					Kind:  jpath.SelectorIndex,
 					Index: 0,
 				}},
@@ -102,10 +102,10 @@ func TestRawFilterPathValueEvalInvalidPath(t *testing.T) {
 	doc := []any{
 		map[string]any{"x": []any{float64(1)}},
 	}
-	bad := jpath.PathValueExpr{
-		Path: jpath.PathExpr{
-			Segments: []jpath.SegmentExpr{{
-				Selectors: []jpath.SelectorExpr{{
+	bad := &jpath.PathValueExpr{
+		Path: &jpath.PathExpr{
+			Segments: []*jpath.SegmentExpr{{
+				Selectors: []*jpath.SelectorExpr{{
 					Kind: jpath.SelectorKind(255),
 				}},
 			}},
@@ -120,20 +120,20 @@ func TestRawFilterFuncEvalBranches(t *testing.T) {
 		map[string]any{"x": []any{float64(1)}},
 	}
 
-	got := runRawFilter(jpath.FuncExpr{Name: "length"}, doc)
+	got := runRawFilter(&jpath.FuncExpr{Name: "length"}, doc)
 	assert.Empty(t, got)
 
-	got = runRawFilter(jpath.FuncExpr{Name: "count"}, doc)
+	got = runRawFilter(&jpath.FuncExpr{Name: "count"}, doc)
 	assert.Empty(t, got)
 
-	got = runRawFilter(jpath.FuncExpr{Name: "value"}, doc)
+	got = runRawFilter(&jpath.FuncExpr{Name: "value"}, doc)
 	assert.Empty(t, got)
 
 	got = runRawFilter(
-		jpath.FuncExpr{
+		&jpath.FuncExpr{
 			Name: "count",
 			Args: []jpath.FilterExpr{
-				jpath.LiteralExpr{Value: float64(1)},
+				&jpath.LiteralExpr{Value: float64(1)},
 			},
 		},
 		doc,
@@ -141,26 +141,26 @@ func TestRawFilterFuncEvalBranches(t *testing.T) {
 	assert.Empty(t, got)
 
 	got = runRawFilter(
-		jpath.FuncExpr{
+		&jpath.FuncExpr{
 			Name: "value",
 			Args: []jpath.FilterExpr{
-				jpath.LiteralExpr{Value: true},
+				&jpath.LiteralExpr{Value: true},
 			},
 		},
 		doc,
 	)
 	assert.Equal(t, doc, got)
 
-	got = runRawFilter(jpath.FuncExpr{Name: "noSuchFunction"}, doc)
+	got = runRawFilter(&jpath.FuncExpr{Name: "noSuchFunction"}, doc)
 	assert.Empty(t, got)
 }
 
 func TestRawFilterUnaryUnknownOp(t *testing.T) {
 	doc := []any{map[string]any{"x": float64(1)}}
 	got := runRawFilter(
-		jpath.UnaryExpr{
+		&jpath.UnaryExpr{
 			Op:   "~",
-			Expr: jpath.LiteralExpr{Value: true},
+			Expr: &jpath.LiteralExpr{Value: true},
 		},
 		doc,
 	)

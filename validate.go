@@ -10,7 +10,7 @@ const (
 	contextFunctionArg
 )
 
-func validatePath(path PathExpr, registry *Registry) error {
+func validatePath(path *PathExpr, registry *Registry) error {
 	for _, sg := range path.Segments {
 		for _, sel := range sg.Selectors {
 			if sel.Kind != SelectorFilter {
@@ -33,19 +33,19 @@ func validateExpr(
 	ex FilterExpr, ctx exprContext, inComparison bool, registry *Registry,
 ) error {
 	switch v := ex.(type) {
-	case LiteralExpr:
+	case *LiteralExpr:
 		if ctx == contextLogical {
 			return fmt.Errorf("literal must be compared")
 		}
 		return nil
-	case PathValueExpr:
+	case *PathValueExpr:
 		if inComparison && !isSingularPath(v.Path) {
 			return fmt.Errorf("comparison requires singular query")
 		}
 		return nil
-	case UnaryExpr:
+	case *UnaryExpr:
 		return validateExpr(v.Expr, contextLogical, false, registry)
-	case BinaryExpr:
+	case *BinaryExpr:
 		switch v.Op {
 		case "&&", "||":
 			if err := validateExpr(
@@ -75,7 +75,7 @@ func validateExpr(
 		default:
 			return fmt.Errorf("unknown operator: %s", v.Op)
 		}
-	case FuncExpr:
+	case *FuncExpr:
 		if err := validateFunction(v, ctx, inComparison, registry); err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func validateExpr(
 }
 
 func validateFunction(
-	f FuncExpr, ctx exprContext, inComparison bool, registry *Registry,
+	f *FuncExpr, ctx exprContext, inComparison bool, registry *Registry,
 ) error {
 	def, ok := registry.function(f.Name)
 	if !ok {
@@ -119,7 +119,7 @@ func functionUse(ctx exprContext) FunctionUse {
 	}
 }
 
-func isSingularPath(path PathExpr) bool {
+func isSingularPath(path *PathExpr) bool {
 	for _, sg := range path.Segments {
 		if sg.Descendant || len(sg.Selectors) != 1 {
 			return false

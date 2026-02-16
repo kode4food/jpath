@@ -3,22 +3,22 @@ package jpath
 var defaultRegistry = NewRegistry()
 
 // Parse parses a JSONPath query into a PathExpr syntax tree
-func Parse(query string) (PathExpr, error) {
+func Parse(query string) (*PathExpr, error) {
 	return defaultRegistry.Parse(query)
 }
 
 // MustParse parses a JSONPath query or panics
-func MustParse(query string) PathExpr {
+func MustParse(query string) *PathExpr {
 	return defaultRegistry.MustParse(query)
 }
 
 // Compile compiles a parsed PathExpr into an executable Path
-func Compile(path PathExpr) (Path, error) {
+func Compile(path *PathExpr) (*Path, error) {
 	return defaultRegistry.Compile(path)
 }
 
 // MustCompile compiles a parsed PathExpr or panics
-func MustCompile(path PathExpr) Path {
+func MustCompile(path *PathExpr) *Path {
 	return defaultRegistry.MustCompile(path)
 }
 

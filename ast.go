@@ -1,17 +1,15 @@
 package jpath
 
-import "fmt"
-
 type (
 	// PathExpr is a parsed JSONPath expression
 	PathExpr struct {
-		Segments []SegmentExpr
+		Segments []*SegmentExpr
 	}
 
 	// SegmentExpr is one child or descendant traversal segment
 	SegmentExpr struct {
 		Descendant bool
-		Selectors  []SelectorExpr
+		Selectors  []*SelectorExpr
 	}
 
 	// SelectorExpr is one bracket or dot selector operation
@@ -19,7 +17,7 @@ type (
 		Kind   SelectorKind
 		Name   string
 		Index  int
-		Slice  SliceExpr
+		Slice  *SliceExpr
 		Filter FilterExpr
 	}
 
@@ -34,7 +32,7 @@ type (
 
 	// FilterExpr is the marker interface for filter AST nodes
 	FilterExpr interface {
-		eval(*evalCtx) evalValue
+		eval(*evalCtx) *evalValue
 	}
 
 	// LiteralExpr is a scalar literal in a filter expression
@@ -45,7 +43,7 @@ type (
 	// PathValueExpr is a root or current-node relative path in a filter
 	PathValueExpr struct {
 		Absolute bool
-		Path     PathExpr
+		Path     *PathExpr
 	}
 
 	// UnaryExpr is a unary filter expression
@@ -78,15 +76,11 @@ const (
 	SelectorFilter                       // child values by filter predicate
 )
 
-func (p PathExpr) String() string {
-	return fmt.Sprintf("path(segments=%d)", len(p.Segments))
-}
-
-func (l LiteralExpr) eval(_ *evalCtx) evalValue {
+func (l *LiteralExpr) eval(_ *evalCtx) *evalValue {
 	return scalarValue(l.Value)
 }
 
-func (p PathValueExpr) eval(ctx *evalCtx) evalValue {
+func (p *PathValueExpr) eval(ctx *evalCtx) *evalValue {
 	path, err := makePath(p.Path, NewRegistry())
 	if err != nil {
 		return nodesValue(nil)
@@ -98,7 +92,7 @@ func (p PathValueExpr) eval(ctx *evalCtx) evalValue {
 	return nodesValue(path.Query(base))
 }
 
-func (u UnaryExpr) eval(ctx *evalCtx) evalValue {
+func (u *UnaryExpr) eval(ctx *evalCtx) *evalValue {
 	v := u.Expr.eval(ctx)
 	if u.Op == "!" {
 		return scalarValue(!toBool(v))
@@ -106,7 +100,7 @@ func (u UnaryExpr) eval(ctx *evalCtx) evalValue {
 	return scalarValue(nil)
 }
 
-func (b BinaryExpr) eval(ctx *evalCtx) evalValue {
+func (b *BinaryExpr) eval(ctx *evalCtx) *evalValue {
 	if b.Op == "&&" {
 		left := b.Left.eval(ctx)
 		if !toBool(left) {
@@ -126,7 +120,7 @@ func (b BinaryExpr) eval(ctx *evalCtx) evalValue {
 	return scalarValue(compareValues(left, right, b.Op))
 }
 
-func (f FuncExpr) eval(ctx *evalCtx) evalValue {
+func (f *FuncExpr) eval(ctx *evalCtx) *evalValue {
 	def, ok := builtinFunction(f.Name)
 	if !ok {
 		return scalarValue(nil)

@@ -60,7 +60,7 @@ func TestCompileBytecode(t *testing.T) {
 	}
 }
 
-func assertPathShape(t *testing.T, path jpath.Path) {
+func assertPathShape(t *testing.T, path *jpath.Path) {
 	t.Helper()
 	end := -1
 	for pc, inst := range path.Code {
@@ -91,7 +91,7 @@ func assertPathShape(t *testing.T, path jpath.Path) {
 }
 
 func assertSelectorInst(
-	t *testing.T, path jpath.Path, inst jpath.Instruction,
+	t *testing.T, path *jpath.Path, inst jpath.Instruction,
 ) {
 	t.Helper()
 	switch inst.Op {
@@ -102,23 +102,23 @@ func assertSelectorInst(
 	case jpath.OpSelectFilter:
 		assertFilterType(t, path, inst.Arg)
 	case jpath.OpSelectSliceF00, jpath.OpSelectSliceF10P:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceF10N, jpath.OpSelectSliceF01P:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceF01N, jpath.OpSelectSliceF11PP:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceF11PN, jpath.OpSelectSliceF11NP:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceF11NN, jpath.OpSelectSliceB00:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceB10P, jpath.OpSelectSliceB10N:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceB01P, jpath.OpSelectSliceB01N:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceB11PP, jpath.OpSelectSliceB11PN:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectSliceB11NP, jpath.OpSelectSliceB11NN:
-		assertConstType[jpath.SlicePlan](t, path, inst.Arg)
+		assertConstType[*jpath.SlicePlan](t, path, inst.Arg)
 	case jpath.OpSelectWildcard, jpath.OpSelectArrayAll:
 		assert.Zero(t, inst.Arg)
 	case jpath.OpSelectSliceEmpty:
@@ -128,7 +128,7 @@ func assertSelectorInst(
 	}
 }
 
-func assertFilterType(t *testing.T, path jpath.Path, arg int) {
+func assertFilterType(t *testing.T, path *jpath.Path, arg int) {
 	t.Helper()
 	if !assert.GreaterOrEqual(t, arg, 0) {
 		return
@@ -140,7 +140,7 @@ func assertFilterType(t *testing.T, path jpath.Path, arg int) {
 	assert.True(t, ok)
 }
 
-func assertConstType[T any](t *testing.T, path jpath.Path, arg int) {
+func assertConstType[T any](t *testing.T, path *jpath.Path, arg int) {
 	t.Helper()
 	if !assert.GreaterOrEqual(t, arg, 0) {
 		return

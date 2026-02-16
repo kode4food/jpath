@@ -1,7 +1,6 @@
 package jpath_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,17 +57,4 @@ func TestBadNumberError(t *testing.T) {
 	_, err := jpath.Parse("$[?(@ == 01)]")
 	assert.ErrorIs(t, err, jpath.ErrInvalidPath)
 	assert.ErrorIs(t, err, jpath.ErrBadNumber)
-}
-
-func TestStringHelpers(t *testing.T) {
-	reg := jpath.NewRegistry()
-	ast := reg.MustParse("$[0]")
-	assert.Equal(t, "path(segments=1)", ast.String())
-	assert.True(t,
-		strings.HasPrefix(
-			jpath.OpSelectSliceB11PN.String(),
-			"sel/slice/b11pn",
-		),
-	)
-	assert.True(t, strings.HasPrefix(jpath.Opcode(255).String(), "Opcode("))
 }

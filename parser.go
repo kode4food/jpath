@@ -41,9 +41,9 @@ var (
 const maxJSONInt = int64(9007199254740991)
 
 // Parse parses a JSONPath query into a PathExpr syntax tree
-func (p *Parser) Parse(query string) (PathExpr, error) {
+func (p *Parser) Parse(query string) (*PathExpr, error) {
 	if query == "" || strings.TrimSpace(query) != query {
-		return PathExpr{}, wrapPathError(query, 0, ErrExpectedRoot)
+		return nil, wrapPathError(query, 0, ErrExpectedRoot)
 	}
 	p.src = []rune(query)
 	p.text = query
@@ -51,19 +51,19 @@ func (p *Parser) Parse(query string) (PathExpr, error) {
 
 	res, err := p.parseFullPath()
 	if err != nil {
-		return PathExpr{}, err
+		return nil, err
 	}
 	if !p.eof() {
-		return PathExpr{}, wrapPathError(query, p.pos, ErrUnexpectedToken)
+		return nil, wrapPathError(query, p.pos, ErrUnexpectedToken)
 	}
 	return res, nil
 }
 
-func (p *Parser) parseFullPath() (PathExpr, error) {
+func (p *Parser) parseFullPath() (*PathExpr, error) {
 	if !p.consume('$') {
-		return PathExpr{}, wrapPathError(p.text, p.pos, ErrExpectedRoot)
+		return nil, wrapPathError(p.text, p.pos, ErrExpectedRoot)
 	}
-	var segments []SegmentExpr
+	var segments []*SegmentExpr
 	for !p.eof() {
 		p.skipWS()
 		if p.eof() {
@@ -71,75 +71,77 @@ func (p *Parser) parseFullPath() (PathExpr, error) {
 		}
 		sg, ok, err := p.parseSegment()
 		if err != nil {
-			return PathExpr{}, err
+			return nil, err
 		}
 		if !ok {
-			return PathExpr{}, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
+			return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 		}
 		segments = append(segments, sg)
 	}
-	return PathExpr{Segments: segments}, nil
+	return &PathExpr{Segments: segments}, nil
 }
 
-func (p *Parser) parseRelativePath() (PathExpr, error) {
-	var segments []SegmentExpr
+func (p *Parser) parseRelativePath() (*PathExpr, error) {
+	var segments []*SegmentExpr
 	for {
 		p.skipWS()
 		sg, ok, err := p.parseSegment()
 		if err != nil {
-			return PathExpr{}, err
+			return nil, err
 		}
 		if !ok {
 			break
 		}
 		segments = append(segments, sg)
 	}
-	return PathExpr{Segments: segments}, nil
+	return &PathExpr{Segments: segments}, nil
 }
 
-func (p *Parser) parseSegment() (SegmentExpr, bool, error) {
+func (p *Parser) parseSegment() (*SegmentExpr, bool, error) {
 	if p.eof() {
-		return SegmentExpr{}, false, nil
+		return nil, false, nil
 	}
 	if p.peek() == '.' {
 		p.pos++
 		if p.consume('.') {
 			sels, err := p.parseDescendantSelectors()
 			if err != nil {
-				return SegmentExpr{}, false, err
+				return nil, false, err
 			}
-			return SegmentExpr{
+			return &SegmentExpr{
 				Descendant: true,
 				Selectors:  sels,
 			}, true, nil
 		}
 		sel, err := p.parseDotSelector()
 		if err != nil {
-			return SegmentExpr{}, false, err
+			return nil, false, err
 		}
-		return SegmentExpr{
-			Selectors: []SelectorExpr{sel},
+		return &SegmentExpr{
+			Selectors: []*SelectorExpr{sel},
 		}, true, nil
 	}
 	if p.peek() == '[' {
 		sels, err := p.parseBracketSelectors()
 		if err != nil {
-			return SegmentExpr{}, false, err
+			return nil, false, err
 		}
-		return SegmentExpr{
+		return &SegmentExpr{
 			Selectors: sels,
 		}, true, nil
 	}
-	return SegmentExpr{}, false, nil
+	return nil, false, nil
 }
 
-func (p *Parser) parseDescendantSelectors() ([]SelectorExpr, error) {
+func (p *Parser) parseDescendantSelectors() ([]*SelectorExpr, error) {
 	if p.eof() {
 		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	if p.peek() == '*' {
 		p.pos++
-		return []SelectorExpr{{Kind: SelectorWildcard}}, nil
+		return []*SelectorExpr{
+			&SelectorExpr{Kind: SelectorWildcard},
+		}, nil
 	}
 	if p.peek() == '[' {
 		return p.parseBracketSelectors()
@@ -148,33 +150,35 @@ func (p *Parser) parseDescendantSelectors() ([]SelectorExpr, error) {
 	if !ok {
 		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
-	return []SelectorExpr{{Kind: SelectorName, Name: nm}}, nil
+	return []*SelectorExpr{
+		&SelectorExpr{Kind: SelectorName, Name: nm},
+	}, nil
 }
 
-func (p *Parser) parseDotSelector() (SelectorExpr, error) {
+func (p *Parser) parseDotSelector() (*SelectorExpr, error) {
 	if p.eof() {
-		return SelectorExpr{}, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
+		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	if p.peek() == '*' {
 		p.pos++
-		return SelectorExpr{Kind: SelectorWildcard}, nil
+		return &SelectorExpr{Kind: SelectorWildcard}, nil
 	}
 	nm, ok := p.parseMemberName()
 	if !ok {
-		return SelectorExpr{}, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
+		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
-	return SelectorExpr{
+	return &SelectorExpr{
 		Kind: SelectorName,
 		Name: nm,
 	}, nil
 }
 
-func (p *Parser) parseBracketSelectors() ([]SelectorExpr, error) {
+func (p *Parser) parseBracketSelectors() ([]*SelectorExpr, error) {
 	if !p.consume('[') {
 		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	p.skipWS()
-	var sels []SelectorExpr
+	var sels []*SelectorExpr
 	for {
 		sel, err := p.parseBracketSelector()
 		if err != nil {
@@ -203,34 +207,34 @@ func (p *Parser) parseBracketSelectors() ([]SelectorExpr, error) {
 	}
 }
 
-func (p *Parser) parseBracketSelector() (SelectorExpr, error) {
+func (p *Parser) parseBracketSelector() (*SelectorExpr, error) {
 	if p.eof() {
-		return SelectorExpr{}, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
+		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	switch p.peek() {
 	case '*':
 		p.pos++
-		return SelectorExpr{Kind: SelectorWildcard}, nil
+		return &SelectorExpr{Kind: SelectorWildcard}, nil
 	case '?':
 		p.pos++
 		p.skipWS()
 		fl, err := p.parseFilter()
 		if err != nil {
-			return SelectorExpr{}, err
+			return nil, err
 		}
-		return SelectorExpr{Kind: SelectorFilter, Filter: fl}, nil
+		return &SelectorExpr{Kind: SelectorFilter, Filter: fl}, nil
 	case '\'', '"':
 		s, err := p.parseString()
 		if err != nil {
-			return SelectorExpr{}, err
+			return nil, err
 		}
-		return SelectorExpr{Kind: SelectorName, Name: s}, nil
+		return &SelectorExpr{Kind: SelectorName, Name: s}, nil
 	default:
 		return p.parseIndexOrSlice()
 	}
 }
 
-func (p *Parser) parseIndexOrSlice() (SelectorExpr, error) {
+func (p *Parser) parseIndexOrSlice() (*SelectorExpr, error) {
 	startPos := p.pos
 	p.skipWS()
 	hasStart := false
@@ -238,7 +242,7 @@ func (p *Parser) parseIndexOrSlice() (SelectorExpr, error) {
 	if p.peek() != ':' {
 		n, ok := p.parseIntLiteral()
 		if !ok {
-			return SelectorExpr{}, wrapPathError(
+			return nil, wrapPathError(
 				p.text,
 				p.pos,
 				ErrUnexpectedToken,
@@ -250,9 +254,9 @@ func (p *Parser) parseIndexOrSlice() (SelectorExpr, error) {
 	p.skipWS()
 	if p.peek() != ':' {
 		if !hasStart {
-			return SelectorExpr{}, wrapPathError(p.text, startPos, ErrBadSlice)
+			return nil, wrapPathError(p.text, startPos, ErrBadSlice)
 		}
-		return SelectorExpr{Kind: SelectorIndex, Index: start}, nil
+		return &SelectorExpr{Kind: SelectorIndex, Index: start}, nil
 	}
 	p.pos++
 	p.skipWS()
@@ -261,7 +265,7 @@ func (p *Parser) parseIndexOrSlice() (SelectorExpr, error) {
 	if !p.eof() && p.peek() != ':' && p.peek() != ',' && p.peek() != ']' {
 		n, ok := p.parseIntLiteral()
 		if !ok {
-			return SelectorExpr{}, wrapPathError(p.text, p.pos, ErrBadSlice)
+			return nil, wrapPathError(p.text, p.pos, ErrBadSlice)
 		}
 		hasEnd = true
 		end = n
@@ -273,14 +277,14 @@ func (p *Parser) parseIndexOrSlice() (SelectorExpr, error) {
 		if !p.eof() && p.peek() != ',' && p.peek() != ']' {
 			n, ok := p.parseIntLiteral()
 			if !ok {
-				return SelectorExpr{}, wrapPathError(p.text, p.pos, ErrBadSlice)
+				return nil, wrapPathError(p.text, p.pos, ErrBadSlice)
 			}
 			step = n
 		}
 	}
-	return SelectorExpr{
+	return &SelectorExpr{
 		Kind: SelectorSlice,
-		Slice: SliceExpr{
+		Slice: &SliceExpr{
 			HasStart: hasStart,
 			Start:    start,
 			HasEnd:   hasEnd,
@@ -312,7 +316,7 @@ func (p *Parser) parseOr() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = BinaryExpr{Op: "||", Left: left, Right: right}
+		left = &BinaryExpr{Op: "||", Left: left, Right: right}
 	}
 }
 
@@ -330,7 +334,7 @@ func (p *Parser) parseAnd() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = BinaryExpr{Op: "&&", Left: left, Right: right}
+		left = &BinaryExpr{Op: "&&", Left: left, Right: right}
 	}
 }
 
@@ -363,7 +367,7 @@ func (p *Parser) parseCompare() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{Op: op, Left: left, Right: right}
 	}
 }
 
@@ -374,7 +378,7 @@ func (p *Parser) parseUnary() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return UnaryExpr{Op: "!", Expr: ex}, nil
+		return &UnaryExpr{Op: "!", Expr: ex}, nil
 	}
 	return p.parsePrimary()
 }
@@ -401,37 +405,37 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return LiteralExpr{Value: s}, nil
+		return &LiteralExpr{Value: s}, nil
 	case '$':
 		p.pos++
 		path, err := p.parseRelativePath()
 		if err != nil {
 			return nil, err
 		}
-		return PathValueExpr{Absolute: true, Path: path}, nil
+		return &PathValueExpr{Absolute: true, Path: path}, nil
 	case '@':
 		p.pos++
 		path, err := p.parseRelativePath()
 		if err != nil {
 			return nil, err
 		}
-		return PathValueExpr{Absolute: false, Path: path}, nil
+		return &PathValueExpr{Absolute: false, Path: path}, nil
 	default:
 		if isNumberStart(p.peek()) {
 			n, ok := p.parseNumberLiteral()
 			if !ok {
 				return nil, wrapPathError(p.text, p.pos, ErrBadNumber)
 			}
-			return LiteralExpr{Value: n}, nil
+			return &LiteralExpr{Value: n}, nil
 		}
 		if p.consumeString("true") {
-			return LiteralExpr{Value: true}, nil
+			return &LiteralExpr{Value: true}, nil
 		}
 		if p.consumeString("false") {
-			return LiteralExpr{Value: false}, nil
+			return &LiteralExpr{Value: false}, nil
 		}
 		if p.consumeString("null") {
-			return LiteralExpr{Value: nil}, nil
+			return &LiteralExpr{Value: nil}, nil
 		}
 		if ident, ok := p.parseIdentifier(); ok {
 			if !p.consume('(') {
@@ -441,7 +445,7 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 			if err != nil {
 				return nil, err
 			}
-			return FuncExpr{Name: ident, Args: args}, nil
+			return &FuncExpr{Name: ident, Args: args}, nil
 		}
 	}
 	return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)

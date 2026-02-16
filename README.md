@@ -14,20 +14,20 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 
 ## Core API
 
-- `Parse(query string) (PathExpr, error)`
-- `MustParse(query string) PathExpr`
-- `Compile(path PathExpr) (Path, error)`
-- `MustCompile(path PathExpr) Path`
+- `Parse(query string) (*PathExpr, error)`
+- `MustParse(query string) *PathExpr`
+- `Compile(path *PathExpr) (*Path, error)`
+- `MustCompile(path *PathExpr) *Path`
 - `Query(query string, document any) ([]any, error)`
 - `MustQuery(query string, document any) []any`
 
 ### Registry Management
 
 - `NewRegistry() *Registry`
-- `(*Registry).Parse(query string) (PathExpr, error)`
-- `(*Registry).Compile(path PathExpr) (Path, error)`
+- `(*Registry).Parse(query string) (*PathExpr, error)`
+- `(*Registry).Compile(path *PathExpr) (*Path, error)`
 - `(*Registry).Query(query string, document any) ([]any, error)`
-- `(*Registry).RegisterFunction(name string, def FunctionDefinition) error`
+- `(*Registry).RegisterFunction(name string, def *FunctionDefinition) error`
 - `(*Registry).Clone() *Registry`
 
 Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
@@ -59,7 +59,7 @@ matches := jpath.MustQuery("$.store.book[*].title", document)
 
 ```go
 registry := jpath.NewRegistry()
-registry.MustRegisterFunction("startsWith", jpath.FunctionDefinition{
+registry.MustRegisterFunction("startsWith", &jpath.FunctionDefinition{
 	Validate: func(args []jpath.FilterExpr, use jpath.FunctionUse, inComparison bool) error {
 		if len(args) != 2 {
 			return fmt.Errorf("invalid function arity")
@@ -69,16 +69,16 @@ registry.MustRegisterFunction("startsWith", jpath.FunctionDefinition{
 		}
 		return nil
 	},
-	Eval: func(args []jpath.FunctionValue) jpath.FunctionValue {
+	Eval: func(args []*jpath.FunctionValue) *jpath.FunctionValue {
 		left, ok := args[0].Scalar.(string)
 		if !ok {
-			return jpath.FunctionValue{Scalar: false}
+			return &jpath.FunctionValue{Scalar: false}
 		}
 		right, ok := args[1].Scalar.(string)
 		if !ok {
-			return jpath.FunctionValue{Scalar: false}
+			return &jpath.FunctionValue{Scalar: false}
 		}
-		return jpath.FunctionValue{Scalar: strings.HasPrefix(left, right)}
+		return &jpath.FunctionValue{Scalar: strings.HasPrefix(left, right)}
 	},
 })
 ```

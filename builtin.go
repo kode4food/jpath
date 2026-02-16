@@ -6,28 +6,28 @@ import (
 	"regexp"
 )
 
-var defaultFunctions = map[string]FunctionDefinition{
-	"length": {
+var defaultFunctions = map[string]*FunctionDefinition{
+	"length": &FunctionDefinition{
 		Validate: validateLengthFunction,
 		Eval:     evalLength,
 	},
-	"count": {
+	"count": &FunctionDefinition{
 		Validate: validateCountFunction,
 		Eval:     evalCount,
 	},
-	"value": {
+	"value": &FunctionDefinition{
 		Validate: validateValueFunction,
 		Eval:     evalValueFn,
 	},
-	"match": {
+	"match": &FunctionDefinition{
 		Validate: validateMatchSearchFunction,
-		Eval: func(args []FunctionValue) FunctionValue {
+		Eval: func(args []*FunctionValue) *FunctionValue {
 			return evalMatch(args, true)
 		},
 	},
-	"search": {
+	"search": &FunctionDefinition{
 		Validate: validateMatchSearchFunction,
-		Eval: func(args []FunctionValue) FunctionValue {
+		Eval: func(args []*FunctionValue) *FunctionValue {
 			return evalMatch(args, false)
 		},
 	},
@@ -37,7 +37,7 @@ func registerDefaultFunctions(r *Registry) {
 	maps.Copy(r.functions, defaultFunctions)
 }
 
-func builtinFunction(name string) (FunctionDefinition, bool) {
+func builtinFunction(name string) (*FunctionDefinition, bool) {
 	def, ok := defaultFunctions[name]
 	return def, ok
 }
@@ -51,7 +51,7 @@ func validateLengthFunction(
 	if !inComparison && use == FunctionUseLogical {
 		return fmt.Errorf("function result must be compared")
 	}
-	if pv, ok := args[0].(PathValueExpr); ok {
+	if pv, ok := args[0].(*PathValueExpr); ok {
 		if !isSingularPath(pv.Path) {
 			return fmt.Errorf("function requires singular query")
 		}
@@ -68,7 +68,7 @@ func validateCountFunction(
 	if !inComparison && use == FunctionUseLogical {
 		return fmt.Errorf("function result must be compared")
 	}
-	if _, ok := args[0].(PathValueExpr); !ok {
+	if _, ok := args[0].(*PathValueExpr); !ok {
 		return fmt.Errorf("count requires query argument")
 	}
 	return nil
@@ -83,7 +83,7 @@ func validateValueFunction(
 	if !inComparison && use == FunctionUseLogical {
 		return fmt.Errorf("function result must be compared")
 	}
-	if _, ok := args[0].(PathValueExpr); !ok {
+	if _, ok := args[0].(*PathValueExpr); !ok {
 		return fmt.Errorf("value requires query argument")
 	}
 	return nil
@@ -101,7 +101,7 @@ func validateMatchSearchFunction(
 	return nil
 }
 
-func evalLength(args []FunctionValue) FunctionValue {
+func evalLength(args []*FunctionValue) *FunctionValue {
 	if len(args) != 1 {
 		return scalarFunctionValue(nothing)
 	}
@@ -115,7 +115,7 @@ func evalLength(args []FunctionValue) FunctionValue {
 	return evalLengthValue(v.Scalar)
 }
 
-func evalLengthValue(value any) FunctionValue {
+func evalLengthValue(value any) *FunctionValue {
 	switch raw := value.(type) {
 	case string:
 		return scalarFunctionValue(float64(len([]rune(raw))))
@@ -128,7 +128,7 @@ func evalLengthValue(value any) FunctionValue {
 	}
 }
 
-func evalCount(args []FunctionValue) FunctionValue {
+func evalCount(args []*FunctionValue) *FunctionValue {
 	if len(args) != 1 {
 		return scalarFunctionValue(nothing)
 	}
@@ -139,7 +139,7 @@ func evalCount(args []FunctionValue) FunctionValue {
 	return scalarFunctionValue(nothing)
 }
 
-func evalValueFn(args []FunctionValue) FunctionValue {
+func evalValueFn(args []*FunctionValue) *FunctionValue {
 	if len(args) != 1 {
 		return scalarFunctionValue(nothing)
 	}
@@ -153,7 +153,7 @@ func evalValueFn(args []FunctionValue) FunctionValue {
 	return v
 }
 
-func evalMatch(args []FunctionValue, full bool) FunctionValue {
+func evalMatch(args []*FunctionValue, full bool) *FunctionValue {
 	if len(args) != 2 {
 		return scalarFunctionValue(nothing)
 	}
@@ -184,7 +184,7 @@ func evalMatch(args []FunctionValue, full bool) FunctionValue {
 	return scalarFunctionValue(re.MatchString(left))
 }
 
-func singularFunctionValue(v FunctionValue) (any, bool) {
+func singularFunctionValue(v *FunctionValue) (any, bool) {
 	if v.IsNodes {
 		if len(v.Nodes) != 1 {
 			return nil, false
@@ -194,6 +194,6 @@ func singularFunctionValue(v FunctionValue) (any, bool) {
 	return v.Scalar, true
 }
 
-func scalarFunctionValue(value any) FunctionValue {
-	return FunctionValue{Scalar: value}
+func scalarFunctionValue(value any) *FunctionValue {
+	return &FunctionValue{Scalar: value}
 }

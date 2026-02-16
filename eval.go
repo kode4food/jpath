@@ -23,7 +23,7 @@ type (
 
 	compiledPathValueExpr struct {
 		absolute bool
-		path     Path
+		path     *Path
 	}
 
 	compiledFuncExpr struct {
@@ -39,7 +39,7 @@ const (
 
 var nothing nothingType
 
-func (p compiledPathValueExpr) eval(ctx *evalCtx) evalValue {
+func (p *compiledPathValueExpr) eval(ctx *evalCtx) *evalValue {
 	base := ctx.current
 	if p.absolute {
 		base = ctx.root
@@ -48,44 +48,44 @@ func (p compiledPathValueExpr) eval(ctx *evalCtx) evalValue {
 	return nodesValue(res)
 }
 
-func (f compiledFuncExpr) eval(ctx *evalCtx) evalValue {
+func (f *compiledFuncExpr) eval(ctx *evalCtx) *evalValue {
 	return fromFunctionValue(f.evaluator(evalFunctionArgs(f.args, ctx)))
 }
 
-func scalarValue(value any) evalValue {
-	return evalValue{kind: evalScalar, scalar: value}
+func scalarValue(value any) *evalValue {
+	return &evalValue{kind: evalScalar, scalar: value}
 }
 
-func nodesValue(v []any) evalValue {
-	return evalValue{kind: evalNodes, nodes: v}
+func nodesValue(v []any) *evalValue {
+	return &evalValue{kind: evalNodes, nodes: v}
 }
 
-func evalFunctionArgs(args []FilterExpr, ctx *evalCtx) []FunctionValue {
-	res := make([]FunctionValue, len(args))
+func evalFunctionArgs(args []FilterExpr, ctx *evalCtx) []*FunctionValue {
+	res := make([]*FunctionValue, len(args))
 	for idx, arg := range args {
 		res[idx] = toFunctionValue(arg.eval(ctx))
 	}
 	return res
 }
 
-func toFunctionValue(v evalValue) FunctionValue {
+func toFunctionValue(v *evalValue) *FunctionValue {
 	if v.kind == evalNodes {
-		return FunctionValue{
+		return &FunctionValue{
 			IsNodes: true,
 			Nodes:   v.nodes,
 		}
 	}
-	return FunctionValue{Scalar: v.scalar}
+	return &FunctionValue{Scalar: v.scalar}
 }
 
-func fromFunctionValue(v FunctionValue) evalValue {
+func fromFunctionValue(v *FunctionValue) *evalValue {
 	if v.IsNodes {
 		return nodesValue(v.Nodes)
 	}
 	return scalarValue(v.Scalar)
 }
 
-func compareValues(left, right evalValue, op string) bool {
+func compareValues(left, right *evalValue, op string) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
@@ -169,14 +169,14 @@ func comparePair(left, right any, op string) (bool, bool) {
 	return false, false
 }
 
-func expandCandidates(v evalValue) []any {
+func expandCandidates(v *evalValue) []any {
 	if v.kind == evalNodes {
 		return v.nodes
 	}
 	return []any{v.scalar}
 }
 
-func toBool(v evalValue) bool {
+func toBool(v *evalValue) bool {
 	if v.kind == evalNodes {
 		return len(v.nodes) > 0
 	}
