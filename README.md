@@ -14,23 +14,27 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 
 ## Core API
 
-- `type Path func(document any) []any`: compiled query function returned by `Compile`; call directly as `matches := path(document)`.
-- `Parse(query string) (*PathExpr, error)`: parse a query string into an AST (`PathExpr`).
-- `MustParse(query string) *PathExpr`: parse a query string into an AST and panic on error.
-- `Compile(path *PathExpr) (Path, error)`: compile an AST into an executable `Path` function.
-- `MustCompile(path *PathExpr) Path`: compile an AST into an executable `Path` function and panic on error.
-- `Query(query string, document any) ([]any, error)`: parse, compile, and execute a query against a document with the default registry.
-- `MustQuery(query string, document any) []any`: parse, compile, and execute a query against a document with the default registry, panicking on error.
+| Signature | Description |
+| --- | --- |
+| `type Path func(document any) []any` | Compiled query function returned by `Compile` |
+| `Parse(query string) (*PathExpr, error)` | Parse a query string into an AST (`PathExpr`) |
+| `MustParse(query string) *PathExpr` | Parse a query string into an AST and panic on error |
+| `Compile(path *PathExpr) (Path, error)` | Compile an AST into an executable `Path` function |
+| `MustCompile(path *PathExpr) Path` | Compile an AST into an executable `Path` function and panic on error |
+| `Query(query string, document any) ([]any, error)` | Parse, compile, and execute a query against a document with the default registry |
+| `MustQuery(query string, document any) []any` | Parse, compile, and execute a query against a document with the default registry, panicking on error |
 
-### Registry Management
+## Registry Management
 
-- `NewRegistry() *Registry`: create an isolated registry preloaded with default JSONPath functions.
-- `(*Registry).Parse(query string) (*PathExpr, error)`: parse using this registry context.
-- `(*Registry).Compile(path *PathExpr) (Path, error)`: compile using this registry's function definitions.
-- `(*Registry).Query(query string, document any) ([]any, error)`: parse, compile, and execute using this registry.
-- `(*Registry).RegisterFunction(name string, arity int, fn Function) error`: register a scalar extension function with fixed arity.
-- `(*Registry).RegisterDefinition(name string, def *FunctionDefinition) error`: register a full custom function definition (validation + evaluation).
-- `(*Registry).Clone() *Registry`: copy the registry so function registration can diverge safely.
+| Signature | Description |
+| --- | --- |
+| `NewRegistry() *Registry` | Create an isolated registry preloaded with default JSONPath functions |
+| `(*Registry).Parse(query string) (*PathExpr, error)` | Parse using this registry context |
+| `(*Registry).Compile(path *PathExpr) (Path, error)` | Compile using this registry's function definitions |
+| `(*Registry).Query(query string, document any) ([]any, error)` | Parse, compile, and execute using this registry |
+| `(*Registry).RegisterFunction(name string, arity int, fn Function) error` | Register a scalar extension function with fixed arity |
+| `(*Registry).RegisterDefinition(name string, def *FunctionDefinition) error` | Register a full custom function definition (validation + evaluation) |
+| `(*Registry).Clone() *Registry` | Copy the registry so function registration can diverge safely |
 
 Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
 
