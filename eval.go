@@ -13,20 +13,8 @@ type (
 		Current any
 	}
 
-	nothingType struct{}
+	matchFunc func(left, right any) bool
 )
-
-var nothing nothingType
-
-// ScalarValue constructs a scalar filter value
-func ScalarValue(value any) *Value {
-	return &Value{Scalar: value}
-}
-
-// NodesValue constructs a node-list filter value
-func NodesValue(v []any) *Value {
-	return &Value{IsNodes: true, Nodes: v}
-}
 
 func evalFunctionArgs(args []FilterFunc, ctx *FilterCtx) []*Value {
 	res := make([]*Value, len(args))
@@ -36,132 +24,106 @@ func evalFunctionArgs(args []FilterFunc, ctx *FilterCtx) []*Value {
 	return res
 }
 
-func compareEmptyEq(left, right []any) bool {
-	if len(left) == 0 && len(right) == 0 {
+func compareEmptyEq(left, right *Value) bool {
+	leftCount := left.Count()
+	rightCount := right.Count()
+	if leftCount == 0 && rightCount == 0 {
 		return true
 	}
-	if len(left) == 0 && isNothing(right) {
+	if leftCount == 0 && right.IsNothing() {
 		return true
 	}
-	if len(right) == 0 && isNothing(left) {
+	if rightCount == 0 && left.IsNothing() {
 		return true
 	}
 	return false
 }
 
-func compareEmptyNe(left, right []any) bool {
-	if len(left) == 0 && len(right) == 0 {
+func compareEmptyNe(left, right *Value) bool {
+	leftCount := left.Count()
+	rightCount := right.Count()
+	if leftCount == 0 && rightCount == 0 {
 		return false
 	}
-	if len(left) == 0 && isNothing(right) {
+	if leftCount == 0 && right.IsNothing() {
 		return false
 	}
-	if len(right) == 0 && isNothing(left) {
+	if rightCount == 0 && left.IsNothing() {
 		return false
 	}
 	return true
 }
 
 func compareValuesEq(left, right *Value) bool {
-	lc := expandCandidates(left)
-	rc := expandCandidates(right)
-	if len(lc) == 0 || len(rc) == 0 {
-		return compareEmptyEq(lc, rc)
+	if left.Count() == 0 || right.Count() == 0 {
+		return compareEmptyEq(left, right)
 	}
-	for _, lv := range lc {
-		for _, rv := range rc {
-			if reflect.DeepEqual(lv, rv) {
-				return true
-			}
-		}
-	}
-	return false
+	return matchAny(left, right, reflect.DeepEqual)
 }
 
 func compareValuesNe(left, right *Value) bool {
-	lc := expandCandidates(left)
-	rc := expandCandidates(right)
-	if len(lc) == 0 || len(rc) == 0 {
-		return compareEmptyNe(lc, rc)
+	if left.Count() == 0 || right.Count() == 0 {
+		return compareEmptyNe(left, right)
 	}
-	for _, lv := range lc {
-		for _, rv := range rc {
-			if !reflect.DeepEqual(lv, rv) {
-				return true
-			}
-		}
-	}
-	return false
+	return matchAny(left, right, notDeepEqual)
 }
 
 func compareValuesLt(left, right *Value) bool {
-	lc := expandCandidates(left)
-	rc := expandCandidates(right)
-	if len(lc) == 0 || len(rc) == 0 {
+	if left.Count() == 0 || right.Count() == 0 {
 		return false
 	}
-	for _, lv := range lc {
-		for _, rv := range rc {
-			if matched, ok := lessThan(lv, rv); ok && matched {
-				return true
-			}
-		}
-	}
-	return false
+	return matchAny(left, right, lessThanMatch)
 }
 
 func compareValuesLe(left, right *Value) bool {
-	lc := expandCandidates(left)
-	rc := expandCandidates(right)
-	if len(lc) == 0 || len(rc) == 0 {
+	if left.Count() == 0 || right.Count() == 0 {
 		return false
 	}
-	for _, lv := range lc {
-		for _, rv := range rc {
-			if reflect.DeepEqual(lv, rv) {
-				return true
-			}
-			if matched, ok := lessThan(lv, rv); ok && matched {
-				return true
-			}
-		}
-	}
-	return false
+	return matchAny(left, right, lessEqualMatch)
 }
 
 func compareValuesGt(left, right *Value) bool {
-	lc := expandCandidates(left)
-	rc := expandCandidates(right)
-	if len(lc) == 0 || len(rc) == 0 {
+	if left.Count() == 0 || right.Count() == 0 {
 		return false
 	}
-	for _, lv := range lc {
-		for _, rv := range rc {
-			if matched, ok := greaterThan(lv, rv); ok && matched {
-				return true
-			}
-		}
-	}
-	return false
+	return matchAny(left, right, greaterThanMatch)
 }
 
 func compareValuesGe(left, right *Value) bool {
-	lc := expandCandidates(left)
-	rc := expandCandidates(right)
-	if len(lc) == 0 || len(rc) == 0 {
+	if left.Count() == 0 || right.Count() == 0 {
 		return false
 	}
-	for _, lv := range lc {
-		for _, rv := range rc {
-			if reflect.DeepEqual(lv, rv) {
-				return true
+	return matchAny(left, right, greaterEqualMatch)
+}
+
+func matchAny(left, right *Value, match matchFunc) bool {
+	if left.IsNodes {
+		if right.IsNodes {
+			for _, lv := range left.Nodes {
+				for _, rv := range right.Nodes {
+					if match(lv, rv) {
+						return true
+					}
+				}
 			}
-			if matched, ok := greaterThan(lv, rv); ok && matched {
+			return false
+		}
+		for _, lv := range left.Nodes {
+			if match(lv, right.Scalar) {
 				return true
 			}
 		}
+		return false
 	}
-	return false
+	if right.IsNodes {
+		for _, rv := range right.Nodes {
+			if match(left.Scalar, rv) {
+				return true
+			}
+		}
+		return false
+	}
+	return match(left.Scalar, right.Scalar)
 }
 
 func lessThan(left, right any) (bool, bool) {
@@ -192,11 +154,32 @@ func greaterThan(left, right any) (bool, bool) {
 	return false, false
 }
 
-func expandCandidates(v *Value) []any {
-	if v.IsNodes {
-		return v.Nodes
+func notDeepEqual(left, right any) bool {
+	return !reflect.DeepEqual(left, right)
+}
+
+func lessThanMatch(left, right any) bool {
+	matched, ok := lessThan(left, right)
+	return ok && matched
+}
+
+func lessEqualMatch(left, right any) bool {
+	if reflect.DeepEqual(left, right) {
+		return true
 	}
-	return []any{v.Scalar}
+	return lessThanMatch(left, right)
+}
+
+func greaterThanMatch(left, right any) bool {
+	matched, ok := greaterThan(left, right)
+	return ok && matched
+}
+
+func greaterEqualMatch(left, right any) bool {
+	if reflect.DeepEqual(left, right) {
+		return true
+	}
+	return greaterThanMatch(left, right)
 }
 
 func toBool(v *Value) bool {
@@ -250,12 +233,4 @@ func normalizeDotPattern(pattern string) string {
 		}
 	}
 	return b.String()
-}
-
-func isNothing(v []any) bool {
-	if len(v) != 1 {
-		return false
-	}
-	_, ok := v[0].(nothingType)
-	return ok
 }

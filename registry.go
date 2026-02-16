@@ -27,13 +27,6 @@ type (
 	// Function evaluates scalar arguments and returns a scalar result
 	Function func(args ...any) (any, bool)
 
-	// Value stores either a scalar or node list argument/result
-	Value struct {
-		IsNodes bool
-		Scalar  any
-		Nodes   []any
-	}
-
 	// FunctionUse describes where a function appears in filter validation
 	FunctionUse uint8
 )
@@ -198,7 +191,7 @@ func WrapFunction(fn Function) Evaluator {
 	return func(args []*Value) *Value {
 		values := make([]any, len(args))
 		for idx, arg := range args {
-			val, ok := singularValue(arg)
+			val, ok := arg.singularValue()
 			if !ok {
 				return ScalarValue(nothing)
 			}

@@ -130,11 +130,11 @@ func evalMatchArguments(args []*Value) (string, string, bool) {
 	if len(args) != 2 {
 		return "", "", false
 	}
-	lhs, ok := singularValue(args[0])
+	lhs, ok := args[0].singularValue()
 	if !ok {
 		return "", "", false
 	}
-	rhs, ok := singularValue(args[1])
+	rhs, ok := args[1].singularValue()
 	if !ok {
 		return "", "", false
 	}
@@ -163,14 +163,4 @@ func compileMatchPattern(pattern string) (*regexp.Regexp, bool) {
 		return regexp.Compile(pattern)
 	})
 	return re, err == nil && re != nil
-}
-
-func singularValue(v *Value) (any, bool) {
-	if v.IsNodes {
-		if len(v.Nodes) != 1 {
-			return nil, false
-		}
-		return v.Nodes[0], true
-	}
-	return v.Scalar, true
 }
