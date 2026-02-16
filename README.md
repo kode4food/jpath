@@ -16,25 +16,25 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 
 | Signature | Description |
 | --- | --- |
-| `Path func(document any) []any` | Compiled query function returned by `Compile` |
 | `Parse(query string) (*PathExpr, error)` | Parse a query string into an AST (`PathExpr`) |
 | `MustParse(query string) *PathExpr` | Parse a query string into an AST and panic on error |
 | `Compile(path *PathExpr) (Path, error)` | Compile an AST into an executable `Path` function |
 | `MustCompile(path *PathExpr) Path` | Compile an AST into an executable `Path` function and panic on error |
 | `Query(query string, document any) ([]any, error)` | Parse, compile, and execute a query against a document with the default registry |
 | `MustQuery(query string, document any) []any` | Parse, compile, and execute a query against a document with the default registry, panicking on error |
+| `Path func(document any) []any` | Compiled query function returned by `Compile` |
 
 ## Registry Management
 
 | Signature | Description |
 | --- | --- |
 | `NewRegistry() *Registry` | Create an isolated registry preloaded with default JSONPath functions |
-| `reg.Parse(query string) (*PathExpr, error)` | Parse using this registry context |
-| `reg.Compile(path *PathExpr) (Path, error)` | Compile using this registry's function definitions |
-| `reg.Query(query string, document any) ([]any, error)` | Parse, compile, and execute using this registry |
-| `reg.RegisterFunction(name string, arity int, fn Function) error` | Register a scalar extension function with fixed arity |
-| `reg.RegisterDefinition(name string, def *FunctionDefinition) error` | Register a full custom function definition (validation + evaluation) |
-| `reg.Clone() *Registry` | Copy the registry so function registration can diverge safely |
+| `.Parse(query string) (*PathExpr, error)` | Parse using this registry context |
+| `.Compile(path *PathExpr) (Path, error)` | Compile using this registry's function definitions |
+| `.Query(query string, document any) ([]any, error)` | Parse, compile, and execute using this registry |
+| `.RegisterFunction(name string, arity int, fn Function) error` | Register a scalar extension function with fixed arity |
+| `.RegisterDefinition(name string, def *FunctionDefinition) error` | Register a full custom function definition (validation + evaluation) |
+| `.Clone() *Registry` | Copy the registry so function registration can diverge safely |
 
 Top-level functions use a default registry. Use explicit `Registry` instances when you need sandboxed extension registration.
 
