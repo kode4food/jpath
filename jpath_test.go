@@ -22,12 +22,6 @@ func TestTopLevelParseCompileQuery(t *testing.T) {
 	assert.Equal(t, []any{float64(20)}, got)
 }
 
-func TestPathQueryNilReceiver(t *testing.T) {
-	var path *jpath.Path
-	got := path.Query(map[string]any{"x": float64(1)})
-	assert.Equal(t, []any{}, got)
-}
-
 func TestTopLevelWrappers(t *testing.T) {
 	ast, err := jpath.Parse("$[1]")
 	if !assert.NoError(t, err) {

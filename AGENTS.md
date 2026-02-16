@@ -93,8 +93,7 @@ Imported from `../argyll/.claude/rules/markdown-style.md`:
 
 ## Testing Conventions
 
-- Tests are black-box by default: use external test packages (`<pkg>_test`).
-- In-package tests are allowed only when unexported behavior cannot be covered through public APIs.
+- Tests are black-box only: use external test packages (`<pkg>_test`).
 - Use `testing` package with `TestXxx` naming.
 - Keep tests deterministic and explicit.
 - Verify both happy paths and error paths.

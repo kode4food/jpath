@@ -28,233 +28,327 @@ type (
 		// Step is the raw step bound from the parsed selector
 		Step int
 	}
+
+	segmentFrame struct {
+		input []any
+		out   []any
+		idx   int
+		start int
+	}
 )
 
 // Query executes the program against a JSON document
 func (p *Path) Query(document any) []any {
-	if p == nil {
-		return []any{}
-	}
-	current := []any{document}
-	var out []any
-	for pc := 0; pc < len(p.Code); {
-		inst := p.Code[pc]
-		switch inst.Op {
+	var FRAMES []segmentFrame
+	var NODE any
+
+	ROOT := document
+	CODE := p.Code
+	CUR := []any{ROOT}
+
+	for PC := 0; PC < len(CODE); {
+		INST := CODE[PC]
+		switch INST.Op {
 		case OpDescend:
-			current = descendantsOf(current)
-			pc++
+			CUR = descendantsOf(CUR)
+			PC++
 
 		case OpSegmentStart:
-			out = out[:0]
-			for _, node := range current {
-				for cur := pc + 1; cur < inst.Arg; cur++ {
-					out = p.selectNode(out, node, document, p.Code[cur])
+			if len(CUR) == 0 {
+				PC = INST.Arg + 1
+				continue
+			}
+			FRAMES = append(FRAMES, segmentFrame{
+				input: CUR,
+				out:   make([]any, 0),
+				idx:   0,
+				start: PC + 1,
+			})
+			NODE = CUR[0]
+			PC++
+
+		case OpSegmentEnd:
+			top := &FRAMES[len(FRAMES)-1]
+			top.idx++
+			if top.idx < len(top.input) {
+				NODE = top.input[top.idx]
+				PC = top.start
+				continue
+			}
+			CUR = top.out
+			FRAMES = FRAMES[:len(FRAMES)-1]
+			PC++
+
+		case OpSelectName:
+			top := &FRAMES[len(FRAMES)-1]
+			name := p.Constants[INST.Arg].(string)
+			if obj, ok := NODE.(map[string]any); ok {
+				if val, ok := obj[name]; ok {
+					top.out = append(top.out, val)
 				}
 			}
-			current = append(current[:0], out...)
-			pc = inst.Arg + 1
+			PC++
+
+		case OpSelectIndex:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok {
+				PC++
+				continue
+			}
+			idx := p.Constants[INST.Arg].(int)
+			pos := normalizeIndex(len(arr), idx)
+			if pos >= 0 && pos < len(arr) {
+				top.out = append(top.out, arr[pos])
+			}
+			PC++
+
+		case OpSelectWildcard:
+			top := &FRAMES[len(FRAMES)-1]
+			top.out = appendWildcard(top.out, NODE)
+			PC++
+
+		case OpSelectArrayAll:
+			top := &FRAMES[len(FRAMES)-1]
+			if arr, ok := NODE.([]any); ok {
+				top.out = append(top.out, arr...)
+			}
+			PC++
+
+		case OpSelectSliceF00:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF00(top.out, arr, plan.Step)
+			PC++
+
+		case OpSelectSliceF10P:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF10P(top.out, arr, plan.Start, plan.Step)
+			PC++
+
+		case OpSelectSliceF10N:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF10N(top.out, arr, plan.Start, plan.Step)
+			PC++
+
+		case OpSelectSliceF01P:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF01P(top.out, arr, plan.End, plan.Step)
+			PC++
+
+		case OpSelectSliceF01N:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF01N(top.out, arr, plan.End, plan.Step)
+			PC++
+
+		case OpSelectSliceF11PP:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF11PP(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceF11PN:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF11PN(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceF11NP:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF11NP(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceF11NN:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceF11NN(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceB00:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB00(top.out, arr, plan.Step)
+			PC++
+
+		case OpSelectSliceB10P:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB10P(top.out, arr, plan.Start, plan.Step)
+			PC++
+
+		case OpSelectSliceB10N:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB10N(top.out, arr, plan.Start, plan.Step)
+			PC++
+
+		case OpSelectSliceB01P:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB01P(top.out, arr, plan.End, plan.Step)
+			PC++
+
+		case OpSelectSliceB01N:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB01N(top.out, arr, plan.End, plan.Step)
+			PC++
+
+		case OpSelectSliceB11PP:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB11PP(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceB11PN:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB11PN(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceB11NP:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB11NP(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceB11NN:
+			top := &FRAMES[len(FRAMES)-1]
+			arr, ok := NODE.([]any)
+			if !ok || len(arr) == 0 {
+				PC++
+				continue
+			}
+			plan := p.Constants[INST.Arg].(SlicePlan)
+			top.out = appendSliceB11NN(
+				top.out, arr, plan.Start, plan.End, plan.Step,
+			)
+			PC++
+
+		case OpSelectSliceEmpty:
+			_ = FRAMES[len(FRAMES)-1]
+			PC++
+
+		case OpSelectFilter:
+			top := &FRAMES[len(FRAMES)-1]
+			flt := p.Constants[INST.Arg].(FilterExpr)
+			top.out = appendFilter(top.out, NODE, ROOT, flt)
+			PC++
 
 		default:
-			pc++
+			panic("unknown opcode")
 		}
 	}
-	if current == nil {
-		return []any{}
-	}
-	return current
+	return CUR
 }
 
 func (p *Path) addConst(value any) int {
 	p.Constants = append(p.Constants, value)
 	return len(p.Constants) - 1
-}
-
-func (p *Path) selectNode(out []any, node, root any, i Instruction) []any {
-	switch i.Op {
-	case OpSelectName:
-		name := p.Constants[i.Arg].(string)
-		if obj, ok := node.(map[string]any); ok {
-			if val, ok := obj[name]; ok {
-				out = append(out, val)
-			}
-		}
-		return out
-
-	case OpSelectIndex:
-		arr, ok := node.([]any)
-		if !ok {
-			return out
-		}
-		idx := p.Constants[i.Arg].(int)
-		pos := normalizeIndex(len(arr), idx)
-		if pos >= 0 && pos < len(arr) {
-			out = append(out, arr[pos])
-		}
-		return out
-
-	case OpSelectWildcard:
-		return appendWildcard(out, node)
-
-	case OpSelectArrayAll:
-		if arr, ok := node.([]any); ok {
-			out = append(out, arr...)
-		}
-		return out
-
-	case OpSelectSliceF00:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF00(out, arr, plan.Step)
-
-	case OpSelectSliceF10P:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF10P(out, arr, plan.Start, plan.Step)
-
-	case OpSelectSliceF10N:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF10N(out, arr, plan.Start, plan.Step)
-
-	case OpSelectSliceF01P:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF01P(out, arr, plan.End, plan.Step)
-
-	case OpSelectSliceF01N:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF01N(out, arr, plan.End, plan.Step)
-
-	case OpSelectSliceF11PP:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF11PP(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceF11PN:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF11PN(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceF11NP:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF11NP(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceF11NN:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceF11NN(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceB00:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB00(out, arr, plan.Step)
-
-	case OpSelectSliceB10P:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB10P(out, arr, plan.Start, plan.Step)
-
-	case OpSelectSliceB10N:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB10N(out, arr, plan.Start, plan.Step)
-
-	case OpSelectSliceB01P:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB01P(out, arr, plan.End, plan.Step)
-
-	case OpSelectSliceB01N:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB01N(out, arr, plan.End, plan.Step)
-
-	case OpSelectSliceB11PP:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB11PP(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceB11PN:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB11PN(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceB11NP:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB11NP(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceB11NN:
-		arr, ok := node.([]any)
-		if !ok || len(arr) == 0 {
-			return out
-		}
-		plan := p.Constants[i.Arg].(SlicePlan)
-		return appendSliceB11NN(out, arr, plan.Start, plan.End, plan.Step)
-
-	case OpSelectSliceEmpty:
-		return out
-
-	case OpSelectFilter:
-		flt := p.Constants[i.Arg].(FilterExpr)
-		return appendFilter(out, node, root, flt)
-
-	default:
-		return out
-	}
 }
 
 func descendantsOf(nodes []any) []any {
@@ -448,9 +542,6 @@ func appendSliceB11NN(out, arr []any, start, end, step int) []any {
 }
 
 func forwardStartPos(start, size int) int {
-	if start < 0 {
-		return 0
-	}
 	if start > size {
 		return size
 	}
@@ -462,16 +553,10 @@ func forwardStartNeg(start, size int) int {
 	if start < 0 {
 		return 0
 	}
-	if start > size {
-		return size
-	}
 	return start
 }
 
 func forwardEndPos(end, size int) int {
-	if end < 0 {
-		return 0
-	}
 	if end > size {
 		return size
 	}
@@ -483,16 +568,10 @@ func forwardEndNeg(end, size int) int {
 	if end < 0 {
 		return 0
 	}
-	if end > size {
-		return size
-	}
 	return end
 }
 
 func backwardStartPos(start, size int) int {
-	if start < 0 {
-		return -1
-	}
 	if start >= size {
 		return size - 1
 	}
@@ -501,16 +580,13 @@ func backwardStartPos(start, size int) int {
 
 func backwardStartNeg(start, size int) int {
 	start += size
-	if start >= size {
-		return size - 1
+	if start < -1 {
+		return -1
 	}
 	return start
 }
 
 func backwardEndPos(end, size int) int {
-	if end < -1 {
-		return -1
-	}
 	if end >= size {
 		return size - 1
 	}
@@ -521,9 +597,6 @@ func backwardEndNeg(end, size int) int {
 	end += size
 	if end < -1 {
 		return -1
-	}
-	if end >= size {
-		return size - 1
 	}
 	return end
 }

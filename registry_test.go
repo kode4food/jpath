@@ -110,6 +110,26 @@ func TestRegistryExtensionFunction(t *testing.T) {
 	assert.Equal(t, []any{float64(1), float64(2)}, got)
 }
 
+func TestRegistryExtensionFunctionNodes(t *testing.T) {
+	reg := jpath.NewRegistry()
+	err := reg.RegisterFunction("nodeTruthy", jpath.FunctionDefinition{
+		Eval: func(_ []jpath.FunctionValue) jpath.FunctionValue {
+			return jpath.FunctionValue{
+				IsNodes: true,
+				Nodes:   []any{float64(1)},
+			}
+		},
+	})
+	if !assert.NoError(t, err) {
+		return
+	}
+	got, err := reg.Query("$[?nodeTruthy()]", []any{float64(3), float64(4)})
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{float64(3), float64(4)}, got)
+}
+
 func TestRegistryFunctionIsolation(t *testing.T) {
 	base := jpath.NewRegistry()
 	sandbox := base.Clone()
