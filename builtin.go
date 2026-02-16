@@ -3,30 +3,38 @@ package jpath
 import (
 	"maps"
 	"regexp"
+
+	"github.com/kode4food/lru"
 )
 
-var defaultFunctions = map[string]*FunctionDefinition{
-	"length": {
-		Validate: validateLengthFunction,
-		Eval:     evalLength,
-	},
-	"count": {
-		Validate: validateCountFunction,
-		Eval:     evalCount,
-	},
-	"value": {
-		Validate: validateValueFunction,
-		Eval:     evalValueFunc,
-	},
-	"match": {
-		Validate: validateMatchSearchFunction,
-		Eval:     evalMatchFunction,
-	},
-	"search": {
-		Validate: validateMatchSearchFunction,
-		Eval:     evalSearchFunction,
-	},
-}
+const regexCacheLimit = 4096
+
+var (
+	defaultFunctions = map[string]*FunctionDefinition{
+		"length": {
+			Validate: validateLengthFunction,
+			Eval:     evalLength,
+		},
+		"count": {
+			Validate: validateCountFunction,
+			Eval:     evalCount,
+		},
+		"value": {
+			Validate: validateValueFunction,
+			Eval:     evalValueFunc,
+		},
+		"match": {
+			Validate: validateMatchSearchFunction,
+			Eval:     evalFullMatch,
+		},
+		"search": {
+			Validate: validateMatchSearchFunction,
+			Eval:     evalPartialMatch,
+		},
+	}
+
+	regexCache = lru.NewCache[*regexp.Regexp](regexCacheLimit)
+)
 
 func registerDefaultFunctions(r *Registry) {
 	maps.Copy(r.functions, defaultFunctions)
@@ -48,14 +56,6 @@ func validateValueFunction(
 	args []FilterExpr, use FunctionUse, inComparison bool,
 ) error {
 	return validateUnaryComparedReq("value", args, use, inComparison)
-}
-
-func evalMatchFunction(args []*Value) *Value {
-	return evalMatch(args, true)
-}
-
-func evalSearchFunction(args []*Value) *Value {
-	return evalMatch(args, false)
 }
 
 func evalLength(args []*Value) *Value {
@@ -110,35 +110,59 @@ func evalValueFunc(args []*Value) *Value {
 	return v
 }
 
-func evalMatch(args []*Value, full bool) *Value {
-	if len(args) != 2 {
+func evalFullMatch(args []*Value) *Value {
+	left, pattern, ok := evalMatchArguments(args)
+	if !ok {
 		return ScalarValue(nothing)
+	}
+	return evalPatternMatch(left, "^(?:"+pattern+")$")
+}
+
+func evalPartialMatch(args []*Value) *Value {
+	left, pattern, ok := evalMatchArguments(args)
+	if !ok {
+		return ScalarValue(nothing)
+	}
+	return evalPatternMatch(left, pattern)
+}
+
+func evalMatchArguments(args []*Value) (string, string, bool) {
+	if len(args) != 2 {
+		return "", "", false
 	}
 	lhs, ok := singularValue(args[0])
 	if !ok {
-		return ScalarValue(nothing)
+		return "", "", false
 	}
 	rhs, ok := singularValue(args[1])
 	if !ok {
-		return ScalarValue(nothing)
+		return "", "", false
 	}
 	left, ok := lhs.(string)
 	if !ok {
-		return ScalarValue(nothing)
+		return "", "", false
 	}
-	right, ok := rhs.(string)
+	pattern, ok := rhs.(string)
+	if !ok {
+		return "", "", false
+	}
+	return left, pattern, true
+}
+
+func evalPatternMatch(left, pattern string) *Value {
+	pattern = normalizeDotPattern(pattern)
+	re, ok := compileMatchPattern(pattern)
 	if !ok {
 		return ScalarValue(nothing)
 	}
-	if full {
-		right = "^(?:" + right + ")$"
-	}
-	right = normalizeDotPattern(right)
-	re, err := regexp.Compile(right)
-	if err != nil {
-		return ScalarValue(nothing)
-	}
 	return ScalarValue(re.MatchString(left))
+}
+
+func compileMatchPattern(pattern string) (*regexp.Regexp, bool) {
+	re, err := regexCache.Get(pattern, func() (*regexp.Regexp, error) {
+		return regexp.Compile(pattern)
+	})
+	return re, err == nil && re != nil
 }
 
 func singularValue(v *Value) (any, bool) {
