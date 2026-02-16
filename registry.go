@@ -44,17 +44,17 @@ const (
 )
 
 var (
-	// ErrUnknownFunction indicates a function name is not registered
-	ErrUnknownFunction = errors.New("unknown function")
+	// ErrUnknownFunc indicates a function name is not registered
+	ErrUnknownFunc = errors.New("unknown function")
 
-	// ErrBadFunctionName indicates a function name is invalid
-	ErrBadFunctionName = errors.New("invalid function name")
+	// ErrBadFuncName indicates a function name is invalid
+	ErrBadFuncName = errors.New("invalid function name")
 
-	// ErrBadFunctionDefinition indicates a function definition is invalid
-	ErrBadFunctionDefinition = errors.New("invalid function definition")
+	// ErrBadFuncDefinition indicates a function definition is invalid
+	ErrBadFuncDefinition = errors.New("invalid function definition")
 
-	// ErrFunctionExists indicates a function was already registered
-	ErrFunctionExists = errors.New("function already registered")
+	// ErrFuncExists indicates a function was already registered
+	ErrFuncExists = errors.New("function already registered")
 )
 
 // NewRegistry creates a registry with default JSONPath functions
@@ -76,17 +76,17 @@ func (r *Registry) Clone() *Registry {
 // RegisterFunction registers a named function in this registry
 func (r *Registry) RegisterFunction(name string, def *FunctionDefinition) error {
 	if !isValidFunctionName(name) {
-		return fmt.Errorf("%w: %s", ErrBadFunctionName, name)
+		return fmt.Errorf("%w: %s", ErrBadFuncName, name)
 	}
 	if def.Eval == nil {
-		return fmt.Errorf("%w: %s", ErrBadFunctionDefinition, name)
+		return fmt.Errorf("%w: %s", ErrBadFuncDefinition, name)
 	}
 	if r.functions == nil {
 		r.functions = map[string]*FunctionDefinition{}
 		registerDefaultFunctions(r)
 	}
 	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("%w: %s", ErrFunctionExists, name)
+		return fmt.Errorf("%w: %s", ErrFuncExists, name)
 	}
 	r.functions[name] = def
 	return nil
@@ -118,13 +118,13 @@ func (r *Registry) MustParse(query string) *PathExpr {
 }
 
 // Compile compiles a parsed syntax tree into an executable Path
-func (r *Registry) Compile(path *PathExpr) (*Path, error) {
+func (r *Registry) Compile(path *PathExpr) (Path, error) {
 	c := &Compiler{registry: r}
 	return c.Compile(path)
 }
 
 // MustCompile compiles a parsed syntax tree or panics
-func (r *Registry) MustCompile(path *PathExpr) *Path {
+func (r *Registry) MustCompile(path *PathExpr) Path {
 	res, err := r.Compile(path)
 	if err != nil {
 		panic(err)

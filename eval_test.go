@@ -65,116 +65,67 @@ func TestFilterBuiltinFunctions(t *testing.T) {
 	assert.Equal(t, []any{doc[1]}, got)
 }
 
-func TestRawFilterPathValueEval(t *testing.T) {
+func TestFilterCompareOperators(t *testing.T) {
 	doc := []any{
-		map[string]any{"x": []any{float64(1)}, "id": float64(1)},
-		map[string]any{"id": float64(2)},
+		float64(1), float64(2), float64(3),
 	}
-	rel := &jpath.PathValueExpr{
-		Path: &jpath.PathExpr{
-			Segments: []*jpath.SegmentExpr{{
-				Selectors: []*jpath.SelectorExpr{{
-					Kind: jpath.SelectorName,
-					Name: "x",
-				}},
-			}},
-		},
-	}
-	got := runRawFilter(rel, doc)
-	assert.Equal(t, []any{doc[0]}, got)
+	reg := jpath.NewRegistry()
 
-	abs := &jpath.PathValueExpr{
-		Absolute: true,
-		Path: &jpath.PathExpr{
-			Segments: []*jpath.SegmentExpr{{
-				Selectors: []*jpath.SelectorExpr{{
-					Kind:  jpath.SelectorIndex,
-					Index: 0,
-				}},
-			}},
-		},
+	got, err := reg.Query("$[?@ < 2]", doc)
+	if !assert.NoError(t, err) {
+		return
 	}
-	got = runRawFilter(abs, doc)
-	assert.Equal(t, doc, got)
+	assert.Equal(t, []any{float64(1)}, got)
+
+	got, err = reg.Query("$[?@ <= 2]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{float64(1), float64(2)}, got)
+
+	got, err = reg.Query("$[?@ > 2]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{float64(3)}, got)
+
+	got, err = reg.Query("$[?@ >= 2]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{float64(2), float64(3)}, got)
+
+	got, err = reg.Query("$[?@ != 2]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Equal(t, []any{float64(1), float64(3)}, got)
 }
 
-func TestRawFilterPathValueEvalInvalidPath(t *testing.T) {
+func TestFilterMatchSearchEdgeCases(t *testing.T) {
 	doc := []any{
-		map[string]any{"x": []any{float64(1)}},
-	}
-	bad := &jpath.PathValueExpr{
-		Path: &jpath.PathExpr{
-			Segments: []*jpath.SegmentExpr{{
-				Selectors: []*jpath.SelectorExpr{{
-					Kind: jpath.SelectorKind(255),
-				}},
-			}},
+		map[string]any{
+			"left":  []any{"aa", "bb"},
+			"right": []any{"xx", "yy"},
 		},
 	}
-	got := runRawFilter(bad, doc)
-	assert.Empty(t, got)
-}
+	reg := jpath.NewRegistry()
 
-func TestRawFilterFuncEvalBranches(t *testing.T) {
-	doc := []any{
-		map[string]any{"x": []any{float64(1)}},
+	got, err := reg.Query("$[?match(@.left[*], 'aa')]", doc)
+	if !assert.NoError(t, err) {
+		return
 	}
-
-	got := runRawFilter(&jpath.FuncExpr{Name: "length"}, doc)
 	assert.Empty(t, got)
 
-	got = runRawFilter(&jpath.FuncExpr{Name: "count"}, doc)
-	assert.Empty(t, got)
-
-	got = runRawFilter(&jpath.FuncExpr{Name: "value"}, doc)
-	assert.Empty(t, got)
-
-	got = runRawFilter(
-		&jpath.FuncExpr{
-			Name: "count",
-			Args: []jpath.FilterExpr{
-				&jpath.LiteralExpr{Value: float64(1)},
-			},
-		},
-		doc,
-	)
-	assert.Empty(t, got)
-
-	got = runRawFilter(
-		&jpath.FuncExpr{
-			Name: "value",
-			Args: []jpath.FilterExpr{
-				&jpath.LiteralExpr{Value: true},
-			},
-		},
-		doc,
-	)
-	assert.Equal(t, doc, got)
-
-	got = runRawFilter(&jpath.FuncExpr{Name: "noSuchFunction"}, doc)
-	assert.Empty(t, got)
-}
-
-func TestRawFilterUnaryUnknownOp(t *testing.T) {
-	doc := []any{map[string]any{"x": float64(1)}}
-	got := runRawFilter(
-		&jpath.UnaryExpr{
-			Op:   "~",
-			Expr: &jpath.LiteralExpr{Value: true},
-		},
-		doc,
-	)
-	assert.Empty(t, got)
-}
-
-func runRawFilter(filter jpath.FilterExpr, doc any) []any {
-	p := &jpath.Path{
-		Code: []jpath.Instruction{
-			{Op: jpath.OpSegmentStart, Arg: 2},
-			{Op: jpath.OpSelectFilter, Arg: 0},
-			{Op: jpath.OpSegmentEnd},
-		},
-		Constants: []any{filter},
+	got, err = reg.Query("$[?match('aa', @.right[*])]", doc)
+	if !assert.NoError(t, err) {
+		return
 	}
-	return p.Query(doc)
+	assert.Empty(t, got)
+
+	got, err = reg.Query("$[?search('abc', '[')]", doc)
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.Empty(t, got)
 }

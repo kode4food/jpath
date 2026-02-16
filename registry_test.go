@@ -148,7 +148,7 @@ func TestRegistryFunctionIsolation(t *testing.T) {
 	}
 
 	_, err = base.Query("$[?alwaysFalse(@)]", nil)
-	assert.ErrorIs(t, err, jpath.ErrUnknownFunction)
+	assert.ErrorIs(t, err, jpath.ErrUnknownFunc)
 	assert.ErrorIs(t, err, jpath.ErrInvalidPath)
 
 	_, err = sandbox.Query("$[?alwaysFalse(@)]", nil)
@@ -162,10 +162,10 @@ func TestRegistryRegisterFunctionErrors(t *testing.T) {
 			return &jpath.FunctionValue{}
 		},
 	})
-	assert.ErrorIs(t, err, jpath.ErrBadFunctionName)
+	assert.ErrorIs(t, err, jpath.ErrBadFuncName)
 
 	err = reg.RegisterFunction("x", &jpath.FunctionDefinition{})
-	assert.ErrorIs(t, err, jpath.ErrBadFunctionDefinition)
+	assert.ErrorIs(t, err, jpath.ErrBadFuncDefinition)
 
 	err = reg.RegisterFunction("dup", &jpath.FunctionDefinition{
 		Eval: func(_ []*jpath.FunctionValue) *jpath.FunctionValue {
@@ -181,7 +181,7 @@ func TestRegistryRegisterFunctionErrors(t *testing.T) {
 			return &jpath.FunctionValue{}
 		},
 	})
-	assert.ErrorIs(t, err, jpath.ErrFunctionExists)
+	assert.ErrorIs(t, err, jpath.ErrFuncExists)
 }
 
 func TestMustRegisterFunction(t *testing.T) {

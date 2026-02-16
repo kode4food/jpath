@@ -17,19 +17,11 @@ type (
 		current any
 	}
 
+	filterFunc func(*evalCtx) *evalValue
+
 	nothingType struct{}
 
 	evalKind uint8
-
-	compiledPathValueExpr struct {
-		absolute bool
-		path     *Path
-	}
-
-	compiledFuncExpr struct {
-		evaluator FunctionEvaluator
-		args      []FilterExpr
-	}
 )
 
 const (
@@ -39,19 +31,6 @@ const (
 
 var nothing nothingType
 
-func (p *compiledPathValueExpr) eval(ctx *evalCtx) *evalValue {
-	base := ctx.current
-	if p.absolute {
-		base = ctx.root
-	}
-	res := p.path.Query(base)
-	return nodesValue(res)
-}
-
-func (f *compiledFuncExpr) eval(ctx *evalCtx) *evalValue {
-	return fromFunctionValue(f.evaluator(evalFunctionArgs(f.args, ctx)))
-}
-
 func scalarValue(value any) *evalValue {
 	return &evalValue{kind: evalScalar, scalar: value}
 }
@@ -60,10 +39,10 @@ func nodesValue(v []any) *evalValue {
 	return &evalValue{kind: evalNodes, nodes: v}
 }
 
-func evalFunctionArgs(args []FilterExpr, ctx *evalCtx) []*FunctionValue {
+func evalFunctionArgs(args []filterFunc, ctx *evalCtx) []*FunctionValue {
 	res := make([]*FunctionValue, len(args))
 	for idx, arg := range args {
-		res[idx] = toFunctionValue(arg.eval(ctx))
+		res[idx] = toFunctionValue(arg(ctx))
 	}
 	return res
 }
@@ -85,41 +64,41 @@ func fromFunctionValue(v *FunctionValue) *evalValue {
 	return scalarValue(v.Scalar)
 }
 
-func compareValues(left, right *evalValue, op string) bool {
+func compareEmptyEq(left, right []any) bool {
+	if len(left) == 0 && len(right) == 0 {
+		return true
+	}
+	if len(left) == 0 && isNothing(right) {
+		return true
+	}
+	if len(right) == 0 && isNothing(left) {
+		return true
+	}
+	return false
+}
+
+func compareEmptyNe(left, right []any) bool {
+	if len(left) == 0 && len(right) == 0 {
+		return false
+	}
+	if len(left) == 0 && isNothing(right) {
+		return false
+	}
+	if len(right) == 0 && isNothing(left) {
+		return false
+	}
+	return true
+}
+
+func compareValuesEq(left, right *evalValue) bool {
 	lc := expandCandidates(left)
 	rc := expandCandidates(right)
 	if len(lc) == 0 || len(rc) == 0 {
-		switch op {
-		case "==":
-			if len(lc) == 0 && len(rc) == 0 {
-				return true
-			}
-			if len(lc) == 0 && isNothing(rc) {
-				return true
-			}
-			if len(rc) == 0 && isNothing(lc) {
-				return true
-			}
-			return false
-		case "!=":
-			if len(lc) == 0 && len(rc) == 0 {
-				return false
-			}
-			if len(lc) == 0 && isNothing(rc) {
-				return false
-			}
-			if len(rc) == 0 && isNothing(lc) {
-				return false
-			}
-			return true
-		default:
-			return false
-		}
+		return compareEmptyEq(lc, rc)
 	}
 	for _, lv := range lc {
 		for _, rv := range rc {
-			ok, matched := comparePair(lv, rv, op)
-			if ok && matched {
+			if reflect.DeepEqual(lv, rv) {
 				return true
 			}
 		}
@@ -127,44 +106,116 @@ func compareValues(left, right *evalValue, op string) bool {
 	return false
 }
 
-func comparePair(left, right any, op string) (bool, bool) {
-	switch op {
-	case "==":
-		return true, reflect.DeepEqual(left, right)
-	case "!=":
-		return true, !reflect.DeepEqual(left, right)
-	case "<=", ">=":
-		if reflect.DeepEqual(left, right) {
-			return true, true
+func compareValuesNe(left, right *evalValue) bool {
+	lc := expandCandidates(left)
+	rc := expandCandidates(right)
+	if len(lc) == 0 || len(rc) == 0 {
+		return compareEmptyNe(lc, rc)
+	}
+	for _, lv := range lc {
+		for _, rv := range rc {
+			if !reflect.DeepEqual(lv, rv) {
+				return true
+			}
 		}
 	}
+	return false
+}
+
+func compareValuesLt(left, right *evalValue) bool {
+	lc := expandCandidates(left)
+	rc := expandCandidates(right)
+	if len(lc) == 0 || len(rc) == 0 {
+		return false
+	}
+	for _, lv := range lc {
+		for _, rv := range rc {
+			if matched, ok := lessThan(lv, rv); ok && matched {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func compareValuesLe(left, right *evalValue) bool {
+	lc := expandCandidates(left)
+	rc := expandCandidates(right)
+	if len(lc) == 0 || len(rc) == 0 {
+		return false
+	}
+	for _, lv := range lc {
+		for _, rv := range rc {
+			if reflect.DeepEqual(lv, rv) {
+				return true
+			}
+			if matched, ok := lessThan(lv, rv); ok && matched {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func compareValuesGt(left, right *evalValue) bool {
+	lc := expandCandidates(left)
+	rc := expandCandidates(right)
+	if len(lc) == 0 || len(rc) == 0 {
+		return false
+	}
+	for _, lv := range lc {
+		for _, rv := range rc {
+			if matched, ok := greaterThan(lv, rv); ok && matched {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func compareValuesGe(left, right *evalValue) bool {
+	lc := expandCandidates(left)
+	rc := expandCandidates(right)
+	if len(lc) == 0 || len(rc) == 0 {
+		return false
+	}
+	for _, lv := range lc {
+		for _, rv := range rc {
+			if reflect.DeepEqual(lv, rv) {
+				return true
+			}
+			if matched, ok := greaterThan(lv, rv); ok && matched {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func lessThan(left, right any) (bool, bool) {
 	lf, lok := asNumber(left)
 	rf, rok := asNumber(right)
 	if lok && rok {
-		switch op {
-		case "<":
-			return true, lf < rf
-		case "<=":
-			return true, lf <= rf
-		case ">":
-			return true, lf > rf
-		case ">=":
-			return true, lf >= rf
-		}
+		return lf < rf, true
 	}
 	ls, lok := left.(string)
 	rs, rok := right.(string)
 	if lok && rok {
-		switch op {
-		case "<":
-			return true, ls < rs
-		case "<=":
-			return true, ls <= rs
-		case ">":
-			return true, ls > rs
-		case ">=":
-			return true, ls >= rs
-		}
+		return ls < rs, true
+	}
+	return false, false
+}
+
+func greaterThan(left, right any) (bool, bool) {
+	lf, lok := asNumber(left)
+	rf, rok := asNumber(right)
+	if lok && rok {
+		return lf > rf, true
+	}
+	ls, lok := left.(string)
+	rs, rok := right.(string)
+	if lok && rok {
+		return ls > rs, true
 	}
 	return false, false
 }

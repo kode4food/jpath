@@ -34,8 +34,8 @@ var (
 	// ErrBadSlice indicates an invalid array slice selector
 	ErrBadSlice = errors.New("invalid slice selector")
 
-	// ErrBadFunction indicates an invalid function invocation in a filter
-	ErrBadFunction = errors.New("invalid function call")
+	// ErrBadFunc indicates an invalid function invocation in a filter
+	ErrBadFunc = errors.New("invalid function call")
 )
 
 const maxJSONInt = int64(9007199254740991)
@@ -140,7 +140,7 @@ func (p *Parser) parseDescendantSelectors() ([]*SelectorExpr, error) {
 	if p.peek() == '*' {
 		p.pos++
 		return []*SelectorExpr{
-			&SelectorExpr{Kind: SelectorWildcard},
+			{Kind: SelectorWildcard},
 		}, nil
 	}
 	if p.peek() == '[' {
@@ -151,7 +151,7 @@ func (p *Parser) parseDescendantSelectors() ([]*SelectorExpr, error) {
 		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	return []*SelectorExpr{
-		&SelectorExpr{Kind: SelectorName, Name: nm},
+		{Kind: SelectorName, Name: nm},
 	}, nil
 }
 
@@ -468,7 +468,7 @@ func (p *Parser) parseCallArgs() ([]FilterExpr, error) {
 			return res, nil
 		}
 		if !p.consume(',') {
-			return nil, wrapPathError(p.text, p.pos, ErrBadFunction)
+			return nil, wrapPathError(p.text, p.pos, ErrBadFunc)
 		}
 		p.skipWS()
 	}

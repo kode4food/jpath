@@ -69,6 +69,7 @@ For exported receiver types:
 - When wrapping is required, pack as many args per line as fit before wrapping.
 - For wrapped signatures and calls, break after `(` and keep trailing commas.
 - For wrapped calls where first arg is `t *testing.T`, keep `t` on the first line before wrapping remaining args.
+- In `switch` statements, leave one blank line after each non-empty `case` block when another `case` or `default` block follows.
 
 ## Markdown Style
 

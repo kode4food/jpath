@@ -13,12 +13,12 @@ func MustParse(query string) *PathExpr {
 }
 
 // Compile compiles a parsed PathExpr into an executable Path
-func Compile(path *PathExpr) (*Path, error) {
+func Compile(path *PathExpr) (Path, error) {
 	return defaultRegistry.Compile(path)
 }
 
 // MustCompile compiles a parsed PathExpr or panics
-func MustCompile(path *PathExpr) *Path {
+func MustCompile(path *PathExpr) Path {
 	return defaultRegistry.MustCompile(path)
 }
 

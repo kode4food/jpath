@@ -1,31 +1,30 @@
 package jpath
 
 import (
-	"fmt"
 	"maps"
 	"regexp"
 )
 
 var defaultFunctions = map[string]*FunctionDefinition{
-	"length": &FunctionDefinition{
+	"length": {
 		Validate: validateLengthFunction,
 		Eval:     evalLength,
 	},
-	"count": &FunctionDefinition{
+	"count": {
 		Validate: validateCountFunction,
 		Eval:     evalCount,
 	},
-	"value": &FunctionDefinition{
+	"value": {
 		Validate: validateValueFunction,
-		Eval:     evalValueFn,
+		Eval:     evalValueFunc,
 	},
-	"match": &FunctionDefinition{
+	"match": {
 		Validate: validateMatchSearchFunction,
 		Eval: func(args []*FunctionValue) *FunctionValue {
 			return evalMatch(args, true)
 		},
 	},
-	"search": &FunctionDefinition{
+	"search": {
 		Validate: validateMatchSearchFunction,
 		Eval: func(args []*FunctionValue) *FunctionValue {
 			return evalMatch(args, false)
@@ -35,70 +34,6 @@ var defaultFunctions = map[string]*FunctionDefinition{
 
 func registerDefaultFunctions(r *Registry) {
 	maps.Copy(r.functions, defaultFunctions)
-}
-
-func builtinFunction(name string) (*FunctionDefinition, bool) {
-	def, ok := defaultFunctions[name]
-	return def, ok
-}
-
-func validateLengthFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
-	if len(args) != 1 {
-		return fmt.Errorf("invalid function arity")
-	}
-	if !inComparison && use == FunctionUseLogical {
-		return fmt.Errorf("function result must be compared")
-	}
-	if pv, ok := args[0].(*PathValueExpr); ok {
-		if !isSingularPath(pv.Path) {
-			return fmt.Errorf("function requires singular query")
-		}
-	}
-	return nil
-}
-
-func validateCountFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
-	if len(args) != 1 {
-		return fmt.Errorf("invalid function arity")
-	}
-	if !inComparison && use == FunctionUseLogical {
-		return fmt.Errorf("function result must be compared")
-	}
-	if _, ok := args[0].(*PathValueExpr); !ok {
-		return fmt.Errorf("count requires query argument")
-	}
-	return nil
-}
-
-func validateValueFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
-	if len(args) != 1 {
-		return fmt.Errorf("invalid function arity")
-	}
-	if !inComparison && use == FunctionUseLogical {
-		return fmt.Errorf("function result must be compared")
-	}
-	if _, ok := args[0].(*PathValueExpr); !ok {
-		return fmt.Errorf("value requires query argument")
-	}
-	return nil
-}
-
-func validateMatchSearchFunction(
-	args []FilterExpr, _ FunctionUse, inComparison bool,
-) error {
-	if len(args) != 2 {
-		return fmt.Errorf("invalid function arity")
-	}
-	if inComparison {
-		return fmt.Errorf("function result must not be compared")
-	}
-	return nil
 }
 
 func evalLength(args []*FunctionValue) *FunctionValue {
@@ -139,7 +74,7 @@ func evalCount(args []*FunctionValue) *FunctionValue {
 	return scalarFunctionValue(nothing)
 }
 
-func evalValueFn(args []*FunctionValue) *FunctionValue {
+func evalValueFunc(args []*FunctionValue) *FunctionValue {
 	if len(args) != 1 {
 		return scalarFunctionValue(nothing)
 	}

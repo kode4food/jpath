@@ -13,214 +13,140 @@ func NewCompiler() *Compiler {
 }
 
 // Compile compiles a parsed PathExpr into an executable Path
-func (c *Compiler) Compile(path *PathExpr) (*Path, error) {
+func (c *Compiler) Compile(path *PathExpr) (Path, error) {
 	return compilePath(path, c.registry)
 }
 
-func compilePath(path *PathExpr, registry *Registry) (*Path, error) {
+func compilePath(path *PathExpr, registry *Registry) (Path, error) {
 	if err := validatePath(path, registry); err != nil {
 		return nil, err
 	}
 	return makePath(path, registry)
 }
 
-func makePath(path *PathExpr, registry *Registry) (*Path, error) {
-	res := &Path{}
-	for _, sg := range path.Segments {
-		if sg.Descendant {
-			res.Code = append(res.Code, Instruction{Op: OpDescend})
+func makePath(path *PathExpr, registry *Registry) (Path, error) {
+	segments := make([]SegmentFunc, len(path.Segments))
+	for idx, segment := range path.Segments {
+		compiled, err := compileSegment(segment, registry)
+		if err != nil {
+			return nil, err
 		}
-		segStart := len(res.Code)
-		res.Code = append(res.Code, Instruction{Op: OpSegmentStart})
-		for _, sl := range sg.Selectors {
-			inst, err := compileSelector(sl, res, registry)
-			if err != nil {
-				return nil, err
-			}
-			res.Code = append(res.Code, inst)
-		}
-		segEnd := len(res.Code)
-		res.Code[segStart].Arg = segEnd
-		res.Code = append(res.Code, Instruction{Op: OpSegmentEnd})
+		segments[idx] = compiled
 	}
-	return res, nil
+	return ComposePath(segments...), nil
+}
+
+func compileSegment(
+	segment *SegmentExpr, registry *Registry,
+) (SegmentFunc, error) {
+	selectors := make([]SelectorFunc, len(segment.Selectors))
+	for idx, selector := range segment.Selectors {
+		compiled, err := compileSelector(selector, registry)
+		if err != nil {
+			return nil, err
+		}
+		selectors[idx] = compiled
+	}
+	if segment.Descendant {
+		return DescendantSegment(selectors...), nil
+	}
+	return ChildSegment(selectors...), nil
 }
 
 func compileSelector(
-	sel *SelectorExpr, run *Path, registry *Registry,
-) (Instruction, error) {
+	sel *SelectorExpr, registry *Registry,
+) (SelectorFunc, error) {
 	switch sel.Kind {
 	case SelectorName:
-		return Instruction{
-			Op:  OpSelectName,
-			Arg: run.addConst(sel.Name),
-		}, nil
+		return SelectName(sel.Name), nil
+
 	case SelectorIndex:
-		return Instruction{
-			Op:  OpSelectIndex,
-			Arg: run.addConst(sel.Index),
-		}, nil
+		return SelectIndex(sel.Index), nil
+
 	case SelectorWildcard:
-		return Instruction{Op: OpSelectWildcard}, nil
+		return SelectWildcard(), nil
+
 	case SelectorSlice:
-		return compileSlice(sel.Slice, run), nil
+		return SelectSlice(sel.Slice), nil
+
 	case SelectorFilter:
-		flt, err := compileFilter(sel.Filter, registry)
+		filter, err := compileFilter(sel.Filter, registry)
 		if err != nil {
-			return Instruction{}, err
+			return nil, err
 		}
-		return Instruction{
-			Op:  OpSelectFilter,
-			Arg: run.addConst(flt),
-		}, nil
+		return selectFilter(filter), nil
+
 	default:
-		return Instruction{}, fmt.Errorf("unknown selector kind")
+		return nil, fmt.Errorf("unknown selector kind")
 	}
 }
 
-func compileSlice(s *SliceExpr, run *Path) Instruction {
-	if s.Step == 0 {
-		return Instruction{Op: OpSelectSliceEmpty}
-	}
-	if s.Step == 1 && !s.HasStart && !s.HasEnd {
-		return Instruction{Op: OpSelectArrayAll}
-	}
-
-	plan := &SlicePlan{Step: s.Step}
-	if s.HasStart {
-		plan.Start = s.Start
-	}
-	if s.HasEnd {
-		plan.End = s.End
-	}
-	return Instruction{
-		Op:  sliceOpcode(s),
-		Arg: run.addConst(plan),
-	}
-}
-
-func sliceOpcode(s *SliceExpr) Opcode {
-	if s.Step > 0 {
-		return sliceForwardOpcode(s)
-	}
-	return sliceBackwardOpcode(s)
-}
-
-func sliceForwardOpcode(s *SliceExpr) Opcode {
-	switch {
-	case !s.HasStart && !s.HasEnd:
-		return OpSelectSliceF00
-	case s.HasStart && !s.HasEnd:
-		return sliceForwardStartOpcode(s.Start)
-	case !s.HasStart && s.HasEnd:
-		return sliceForwardEndOpcode(s.End)
-	default:
-		return sliceForwardRangeOpcode(s.Start, s.End)
-	}
-}
-
-func sliceBackwardOpcode(s *SliceExpr) Opcode {
-	switch {
-	case !s.HasStart && !s.HasEnd:
-		return OpSelectSliceB00
-	case s.HasStart && !s.HasEnd:
-		return sliceBackwardStartOpcode(s.Start)
-	case !s.HasStart && s.HasEnd:
-		return sliceBackwardEndOpcode(s.End)
-	default:
-		return sliceBackwardRangeOpcode(s.Start, s.End)
-	}
-}
-
-func sliceForwardStartOpcode(start int) Opcode {
-	if start >= 0 {
-		return OpSelectSliceF10P
-	}
-	return OpSelectSliceF10N
-}
-
-func sliceForwardEndOpcode(end int) Opcode {
-	if end >= 0 {
-		return OpSelectSliceF01P
-	}
-	return OpSelectSliceF01N
-}
-
-func sliceForwardRangeOpcode(start, end int) Opcode {
-	switch {
-	case start >= 0 && end >= 0:
-		return OpSelectSliceF11PP
-	case start >= 0:
-		return OpSelectSliceF11PN
-	case end >= 0:
-		return OpSelectSliceF11NP
-	default:
-		return OpSelectSliceF11NN
-	}
-}
-
-func sliceBackwardStartOpcode(start int) Opcode {
-	if start >= 0 {
-		return OpSelectSliceB10P
-	}
-	return OpSelectSliceB10N
-}
-
-func sliceBackwardEndOpcode(end int) Opcode {
-	if end >= 0 {
-		return OpSelectSliceB01P
-	}
-	return OpSelectSliceB01N
-}
-
-func sliceBackwardRangeOpcode(start, end int) Opcode {
-	switch {
-	case start >= 0 && end >= 0:
-		return OpSelectSliceB11PP
-	case start >= 0:
-		return OpSelectSliceB11PN
-	case end >= 0:
-		return OpSelectSliceB11NP
-	default:
-		return OpSelectSliceB11NN
-	}
-}
-
-func compileFilter(expr FilterExpr, registry *Registry) (FilterExpr, error) {
+func compileFilter(
+	expr FilterExpr, registry *Registry,
+) (filterFunc, error) {
 	switch v := expr.(type) {
 	case *LiteralExpr:
-		return v, nil
+		value := v.Value
+		return func(_ *evalCtx) *evalValue {
+			return scalarValue(value)
+		}, nil
+
 	case *PathValueExpr:
 		path, err := makePath(v.Path, registry)
 		if err != nil {
 			return nil, err
 		}
-		return &compiledPathValueExpr{
-			absolute: v.Absolute,
-			path:     path,
+		absolute := v.Absolute
+		return func(ctx *evalCtx) *evalValue {
+			base := ctx.current
+			if absolute {
+				base = ctx.root
+			}
+			return nodesValue(path.Query(base))
 		}, nil
+
 	case *UnaryExpr:
-		ex, err := compileFilter(v.Expr, registry)
+		exprFunc, err := compileFilter(v.Expr, registry)
 		if err != nil {
 			return nil, err
 		}
-		return &UnaryExpr{Op: v.Op, Expr: ex}, nil
+		if v.Op == "!" {
+			return makeNot(exprFunc), nil
+		}
+		return nil, fmt.Errorf("unknown unary operator: %s", v.Op)
+
 	case *BinaryExpr:
-		left, err := compileFilter(v.Left, registry)
+		leftFunc, err := compileFilter(v.Left, registry)
 		if err != nil {
 			return nil, err
 		}
-		right, err := compileFilter(v.Right, registry)
+		rightFunc, err := compileFilter(v.Right, registry)
 		if err != nil {
 			return nil, err
 		}
-		return &BinaryExpr{
-			Op:    v.Op,
-			Left:  left,
-			Right: right,
-		}, nil
+		switch v.Op {
+		case "&&":
+			return makeAnd(leftFunc, rightFunc), nil
+		case "||":
+			return makeOr(leftFunc, rightFunc), nil
+		case "==":
+			return makeEq(leftFunc, rightFunc), nil
+		case "!=":
+			return makeNe(leftFunc, rightFunc), nil
+		case "<":
+			return makeLt(leftFunc, rightFunc), nil
+		case "<=":
+			return makeLe(leftFunc, rightFunc), nil
+		case ">":
+			return makeGt(leftFunc, rightFunc), nil
+		case ">=":
+			return makeGe(leftFunc, rightFunc), nil
+		default:
+			return nil, fmt.Errorf("unknown operator: %s", v.Op)
+		}
+
 	case *FuncExpr:
-		args := make([]FilterExpr, len(v.Args))
+		args := make([]filterFunc, len(v.Args))
 		for idx, arg := range v.Args {
 			compiled, err := compileFilter(arg, registry)
 			if err != nil {
@@ -230,13 +156,81 @@ func compileFilter(expr FilterExpr, registry *Registry) (FilterExpr, error) {
 		}
 		def, ok := registry.function(v.Name)
 		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrUnknownFunction, v.Name)
+			return nil, fmt.Errorf("%w: %s", ErrUnknownFunc, v.Name)
 		}
-		return &compiledFuncExpr{
-			evaluator: def.Eval,
-			args:      args,
-		}, nil
+		return makeCall(def.Eval, args), nil
+
 	default:
 		return nil, fmt.Errorf("unknown filter expression")
+	}
+}
+
+func makeNot(expr filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(!toBool(expr(ctx)))
+	}
+}
+
+func makeAnd(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		leftValue := left(ctx)
+		if !toBool(leftValue) {
+			return scalarValue(false)
+		}
+		return scalarValue(toBool(right(ctx)))
+	}
+}
+
+func makeOr(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		leftValue := left(ctx)
+		if toBool(leftValue) {
+			return scalarValue(true)
+		}
+		return scalarValue(toBool(right(ctx)))
+	}
+}
+
+func makeEq(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(compareValuesEq(left(ctx), right(ctx)))
+	}
+}
+
+func makeNe(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(compareValuesNe(left(ctx), right(ctx)))
+	}
+}
+
+func makeLt(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(compareValuesLt(left(ctx), right(ctx)))
+	}
+}
+
+func makeLe(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(compareValuesLe(left(ctx), right(ctx)))
+	}
+}
+
+func makeGt(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(compareValuesGt(left(ctx), right(ctx)))
+	}
+}
+
+func makeGe(left, right filterFunc) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return scalarValue(compareValuesGe(left(ctx), right(ctx)))
+	}
+}
+
+func makeCall(
+	evaluator FunctionEvaluator, args []filterFunc,
+) filterFunc {
+	return func(ctx *evalCtx) *evalValue {
+		return fromFunctionValue(evaluator(evalFunctionArgs(args, ctx)))
 	}
 }

@@ -2,22 +2,31 @@
 
 ![Build Status](https://github.com/kode4food/jpath/actions/workflows/build.yml/badge.svg) [![Code Coverage](https://qlty.sh/gh/kode4food/projects/jpath/coverage.svg)](https://qlty.sh/gh/kode4food/projects/jpath) [![Maintainability](https://qlty.sh/gh/kode4food/projects/jpath/maintainability.svg)](https://qlty.sh/gh/kode4food/projects/jpath) [![GitHub](https://img.shields.io/github/license/kode4food/jpath)](https://github.com/kode4food/jpath)
 
-jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipeline: parse into an inspectable AST, then compile into a runnable instruction stream. That separation lets you validate or rewrite paths before execution, while keeping runtime evaluation fast and predictable. Extension functions are scoped through registries so custom behavior can be sandboxed.
+jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipeline: parse into an inspectable AST, then compile into a composed function chain. That separation lets you validate or rewrite paths before execution, while keeping runtime evaluation fast and predictable. Extension functions are scoped through registries so custom behavior can be sandboxed.
 
 ## Features
 
 - Parse JSONPath expressions into AST nodes
-- Compile AST into a fast runnable instruction stream
+- Compile AST into a fast runnable function chain
 - Register extension filter functions per registry instance
 - Keep registries isolated for sandboxed behavior
 - Run JSONPath compliance suite fixtures in tests
+
+## Architecture
+
+- `parser.go` + `ast.go`: parse query strings into inspectable AST nodes
+- `compile.go`: compile AST nodes into function composition (`SegmentFunc`/`SelectorFunc`)
+- `path.go`: path-level composition and segment chaining
+- `selector.go`: selector entry points (`SelectName`, `SelectIndex`, `SelectWildcard`, `SelectSlice`, filters)
+- `slice.go`: slice specialization and selector builders chosen at compile time
+- `eval.go` + `builtin.go` + `validate.go`: filter/function evaluation and validation
 
 ## Core API
 
 - `Parse(query string) (*PathExpr, error)`
 - `MustParse(query string) *PathExpr`
-- `Compile(path *PathExpr) (*Path, error)`
-- `MustCompile(path *PathExpr) *Path`
+- `Compile(path *PathExpr) (Path, error)`
+- `MustCompile(path *PathExpr) Path`
 - `Query(query string, document any) ([]any, error)`
 - `MustQuery(query string, document any) []any`
 
@@ -25,7 +34,7 @@ jpath is a JSONPath parser/compiler for Go. It is built around a two-stage pipel
 
 - `NewRegistry() *Registry`
 - `(*Registry).Parse(query string) (*PathExpr, error)`
-- `(*Registry).Compile(path *PathExpr) (*Path, error)`
+- `(*Registry).Compile(path *PathExpr) (Path, error)`
 - `(*Registry).Query(query string, document any) ([]any, error)`
 - `(*Registry).RegisterFunction(name string, def *FunctionDefinition) error`
 - `(*Registry).Clone() *Registry`
@@ -42,17 +51,29 @@ pathExpr, err := registry.Parse("$.store.book[*].title")
 if err != nil {
 	panic(err)
 }
-program, err := registry.Compile(pathExpr)
+path, err := registry.Compile(pathExpr)
 if err != nil {
 	panic(err)
 }
-matches := program.Query(document)
+matches := path.Query(document)
 ```
 
 ### One-step query
 
 ```go
 matches := jpath.MustQuery("$.store.book[*].title", document)
+```
+
+### Compose a Path manually
+
+```go
+path := jpath.ComposePath(
+	jpath.ChildSegment(jpath.SelectName("store")),
+	jpath.ChildSegment(jpath.SelectName("book")),
+	jpath.ChildSegment(jpath.SelectWildcard()),
+	jpath.ChildSegment(jpath.SelectName("title")),
+)
+matches := path.Query(document)
 ```
 
 ### Register an extension function
@@ -95,14 +116,22 @@ Parser errors for `errors.Is` checks:
 - `ErrBadEscape`
 - `ErrBadNumber`
 - `ErrBadSlice`
-- `ErrBadFunction`
+- `ErrBadFunc`
 
 Registry function errors:
 
-- `ErrUnknownFunction`
-- `ErrBadFunctionName`
-- `ErrBadFunctionDefinition`
-- `ErrFunctionExists`
+- `ErrUnknownFunc`
+- `ErrBadFuncName`
+- `ErrBadFuncDefinition`
+- `ErrFuncExists`
+
+Function validation errors:
+
+- `ErrInvalidFuncArity`
+- `ErrFuncResultMustBeCompared`
+- `ErrFuncResultMustNotBeCompared`
+- `ErrFuncRequiresSingularQuery`
+- `ErrFuncRequiresQueryArgument`
 
 ## Status
 

@@ -25,7 +25,7 @@ func TestFunctionValidationPaths(t *testing.T) {
 
 	_, err = reg.Query("$[?missing()]", []any{float64(1)})
 	assert.ErrorIs(t, err, jpath.ErrInvalidPath)
-	assert.ErrorIs(t, err, jpath.ErrUnknownFunction)
+	assert.ErrorIs(t, err, jpath.ErrUnknownFunc)
 }
 
 func TestFunctionValidatorError(t *testing.T) {
