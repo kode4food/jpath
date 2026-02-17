@@ -2,6 +2,7 @@ package jpath
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -16,6 +17,9 @@ type Parser struct {
 }
 
 var (
+	// ErrInvalidPath is raised when a JSONPath query cannot be parsed
+	ErrInvalidPath = errors.New("invalid JSONPath query")
+
 	// ErrExpectedRoot indicates the query does not start with `$`
 	ErrExpectedRoot = errors.New("expected root selector '$'")
 
@@ -751,4 +755,10 @@ func isNamePart(r rune) bool {
 		return true
 	}
 	return unicode.IsDigit(r)
+}
+
+func wrapPathError(query string, pos int, err error) error {
+	return fmt.Errorf(
+		"%w at offset %d in %q: %w", ErrInvalidPath, pos, query, err,
+	)
 }
