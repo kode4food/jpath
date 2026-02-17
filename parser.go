@@ -53,53 +53,24 @@ func (p *Parser) Parse(query string) (*PathExpr, error) {
 	p.text = query
 	p.pos = 0
 
-	res, err := p.parseFullPath()
-	pathErr := err
-	if err == nil {
-		if p.eof() {
-			return res, nil
-		}
-		pathErr = wrapPathError(query, p.pos, ErrUnexpectedToken)
-	}
-
-	if wrapped, ok := p.parseTopLevelFilterPath(); ok {
-		return wrapped, nil
-	}
-	return nil, pathErr
-}
-
-func (p *Parser) parseFullPath() (*PathExpr, error) {
-	if !p.consume('$') {
-		return nil, wrapPathError(p.text, p.pos, ErrExpectedRoot)
-	}
-	var segments []*SegmentExpr
-	for !p.eof() {
-		p.skipWS()
-		if p.eof() {
-			break
-		}
-		sg, ok, err := p.parseSegment()
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
-		}
-		segments = append(segments, sg)
-	}
-	return &PathExpr{Segments: segments}, nil
-}
-
-func (p *Parser) parseTopLevelFilterPath() (*PathExpr, bool) {
-	p.pos = 0
-	filter, err := p.parseFilter()
+	expr, err := p.parseFilter()
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
-	p.skipWS()
 	if !p.eof() {
-		return nil, false
+		return nil, wrapPathError(query, p.pos, ErrUnexpectedToken)
 	}
+	return topLevelPathOrFilter(expr), nil
+}
+
+func topLevelPathOrFilter(expr FilterExpr) *PathExpr {
+	if path, ok := expr.(*PathValueExpr); ok && path.Absolute {
+		return path.Path
+	}
+	return topLevelFilterPath(expr)
+}
+
+func topLevelFilterPath(filter FilterExpr) *PathExpr {
 	return &PathExpr{
 		Segments: []*SegmentExpr{
 			{
@@ -111,7 +82,7 @@ func (p *Parser) parseTopLevelFilterPath() (*PathExpr, bool) {
 				},
 			},
 		},
-	}, true
+	}
 }
 
 func (p *Parser) parseRelativePath() (*PathExpr, error) {
