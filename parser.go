@@ -54,13 +54,18 @@ func (p *Parser) Parse(query string) (*PathExpr, error) {
 	p.pos = 0
 
 	res, err := p.parseFullPath()
-	if err != nil {
-		return nil, err
+	pathErr := err
+	if err == nil {
+		if p.eof() {
+			return res, nil
+		}
+		pathErr = wrapPathError(query, p.pos, ErrUnexpectedToken)
 	}
-	if !p.eof() {
-		return nil, wrapPathError(query, p.pos, ErrUnexpectedToken)
+
+	if wrapped, ok := p.parseTopLevelFilterPath(); ok {
+		return wrapped, nil
 	}
-	return res, nil
+	return nil, pathErr
 }
 
 func (p *Parser) parseFullPath() (*PathExpr, error) {
@@ -83,6 +88,30 @@ func (p *Parser) parseFullPath() (*PathExpr, error) {
 		segments = append(segments, sg)
 	}
 	return &PathExpr{Segments: segments}, nil
+}
+
+func (p *Parser) parseTopLevelFilterPath() (*PathExpr, bool) {
+	p.pos = 0
+	filter, err := p.parseFilter()
+	if err != nil {
+		return nil, false
+	}
+	p.skipWS()
+	if !p.eof() {
+		return nil, false
+	}
+	return &PathExpr{
+		Segments: []*SegmentExpr{
+			{
+				Selectors: []*SelectorExpr{
+					{
+						Kind:   SelectorFilter,
+						Filter: filter,
+					},
+				},
+			},
+		},
+	}, true
 }
 
 func (p *Parser) parseRelativePath() (*PathExpr, error) {
