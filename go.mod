@@ -1,9 +1,9 @@
 module github.com/kode4food/jpath
 
-go 1.25.3
+go 1.25.7
 
 require (
-	github.com/kode4food/lru v0.0.0-20260216174936-ab1f3aa333ef
+	github.com/kode4food/lru v0.0.0-20260217084209-144fda8850c9
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/tools v0.42.0
 	honnef.co/go/tools v0.7.0
