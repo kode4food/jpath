@@ -3,6 +3,7 @@ package jpath
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"unicode"
@@ -620,6 +621,10 @@ func (p *Parser) parseIntLiteral() (int, bool) {
 	raw := string(p.src[start:p.pos])
 	n, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
+		p.pos = start
+		return 0, false
+	}
+	if n < int64(math.MinInt) || n > int64(math.MaxInt) {
 		p.pos = start
 		return 0, false
 	}
