@@ -8292,7 +8292,7 @@
       "name": "functions, match, dot matcher on \\u2028",
       "selector": "$[?match(@, '.')]",
       "document": [
-        " ",
+        "",
         "\r",
         "\n",
         true,
@@ -8300,7 +8300,7 @@
         {}
       ],
       "result": [
-        " "
+        ""
       ],
       "result_paths": [
         "$[0]"
@@ -8314,7 +8314,7 @@
       "name": "functions, match, dot matcher on \\u2029",
       "selector": "$[?match(@, '.')]",
       "document": [
-        " ",
+        "",
         "\r",
         "\n",
         true,
@@ -8322,7 +8322,7 @@
         {}
       ],
       "result": [
-        " "
+        ""
       ],
       "result_paths": [
         "$[0]"
@@ -8433,10 +8433,10 @@
         "abc",
         "a.c",
         "axc",
-        "a\\ c"
+        "a\\c"
       ],
       "result": [
-        "a\\ c"
+        "a\\c"
       ],
       "result_paths": [
         "$[3]"
@@ -8452,10 +8452,10 @@
       "document": [
         "abc",
         "a.c",
-        "a[ c"
+        "a[c"
       ],
       "result": [
-        "a[ c"
+        "a[c"
       ],
       "result_paths": [
         "$[2]"
@@ -8471,7 +8471,7 @@
       "document": [
         "abc",
         "a.c",
-        "a c",
+        "ac",
         "a]c"
       ],
       "result": [
@@ -8801,8 +8801,8 @@
       "name": "functions, search, dot matcher on \\u2028",
       "selector": "$[?search(@, '.')]",
       "document": [
-        " ",
-        "\r \n",
+        "",
+        "\r\n",
         "\r",
         "\n",
         true,
@@ -8810,8 +8810,8 @@
         {}
       ],
       "result": [
-        " ",
-        "\r \n"
+        "",
+        "\r\n"
       ],
       "result_paths": [
         "$[0]",
@@ -8826,8 +8826,8 @@
       "name": "functions, search, dot matcher on \\u2029",
       "selector": "$[?search(@, '.')]",
       "document": [
-        " ",
-        "\r \n",
+        "",
+        "\r\n",
         "\r",
         "\n",
         true,
@@ -8835,8 +8835,8 @@
         {}
       ],
       "result": [
-        " ",
-        "\r \n"
+        "",
+        "\r\n"
       ],
       "result_paths": [
         "$[0]",
@@ -8953,10 +8953,10 @@
         "x abc y",
         "x a.c y",
         "x axc y",
-        "x a\\ c y"
+        "x a\\c y"
       ],
       "result": [
-        "x a\\ c y"
+        "x a\\c y"
       ],
       "result_paths": [
         "$[3]"
@@ -8972,10 +8972,10 @@
       "document": [
         "x abc y",
         "x a.c y",
-        "x a[ c y"
+        "x a[c y"
       ],
       "result": [
-        "x a[ c y"
+        "x a[c y"
       ],
       "result_paths": [
         "$[2]"
@@ -8991,7 +8991,7 @@
       "document": [
         "x abc y",
         "x a.c y",
-        "x a c y",
+        "x ac y",
         "x a]c y"
       ],
       "result": [
