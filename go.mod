@@ -1,22 +1,22 @@
 module github.com/kode4food/jpath
 
-go 1.25.7
+go 1.26.0
 
 require (
-	github.com/kode4food/lru v0.0.0-20260217084209-144fda8850c9
+	github.com/kode4food/lru v0.0.0-20260718151352-0ac133042e5e
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/tools v0.42.0
-	honnef.co/go/tools v0.7.0
+	golang.org/x/tools v0.49.0
+	honnef.co/go/tools v0.8.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/exp/typeparams v0.0.0-20260212183809-81e46e3db34a // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260213145524-e0ab670178e1 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20260820142414-ca536658362e // indirect
+	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260820143203-7221e139e8d6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
