@@ -1,6 +1,6 @@
 module github.com/kode4food/jpath
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/kode4food/lru v0.0.0-20260718151352-0ac133042e5e
