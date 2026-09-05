@@ -189,10 +189,13 @@ func toBool(v *Value) bool {
 	switch raw := v.Scalar.(type) {
 	case nil:
 		return false
+
 	case nothingType:
 		return false
+
 	case bool:
 		return raw
+
 	default:
 		return true
 	}
@@ -217,17 +220,22 @@ func normalizeDotPattern(pattern string) string {
 		case escaped:
 			b.WriteRune(r)
 			escaped = false
+
 		case r == '\\':
 			b.WriteRune(r)
 			escaped = true
+
 		case r == '[':
 			b.WriteRune(r)
 			inClass = true
+
 		case r == ']':
 			b.WriteRune(r)
 			inClass = false
+
 		case r == '.' && !inClass:
 			b.WriteString("[^\\r\\n]")
+
 		default:
 			b.WriteRune(r)
 		}

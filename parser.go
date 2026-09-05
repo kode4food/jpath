@@ -17,6 +17,8 @@ type Parser struct {
 	pos  int
 }
 
+const maxJSONInt = int64(9007199254740991)
+
 var (
 	// ErrInvalidPath is raised when a JSONPath query cannot be parsed
 	ErrInvalidPath = errors.New("invalid JSONPath query")
@@ -43,8 +45,6 @@ var (
 	ErrBadFunc = errors.New("invalid function call")
 )
 
-const maxJSONInt = int64(9007199254740991)
-
 // Parse parses a JSONPath query into a PathExpr syntax tree
 func (p *Parser) Parse(query string) (*PathExpr, error) {
 	if query == "" || strings.TrimSpace(query) != query {
@@ -62,28 +62,6 @@ func (p *Parser) Parse(query string) (*PathExpr, error) {
 		return nil, wrapPathError(query, p.pos, ErrUnexpectedToken)
 	}
 	return topLevelPathOrFilter(expr), nil
-}
-
-func topLevelPathOrFilter(expr FilterExpr) *PathExpr {
-	if path, ok := expr.(*PathValueExpr); ok && path.Absolute {
-		return path.Path
-	}
-	return topLevelFilterPath(expr)
-}
-
-func topLevelFilterPath(filter FilterExpr) *PathExpr {
-	return &PathExpr{
-		Segments: []*SegmentExpr{
-			{
-				Selectors: []*SelectorExpr{
-					{
-						Kind:   SelectorFilter,
-						Filter: filter,
-					},
-				},
-			},
-		},
-	}
 }
 
 func (p *Parser) parseRelativePath() (*PathExpr, error) {
@@ -193,20 +171,12 @@ func (p *Parser) parseBracketSelectors() ([]*SelectorExpr, error) {
 		p.skipWS()
 		if p.consume(']') {
 			if len(sels) == 0 {
-				return nil, wrapPathError(
-					p.text,
-					p.pos,
-					ErrUnexpectedToken,
-				)
+				return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 			}
 			return sels, nil
 		}
 		if !p.consume(',') {
-			return nil, wrapPathError(
-				p.text,
-				p.pos,
-				ErrUnexpectedToken,
-			)
+			return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 		}
 		p.skipWS()
 	}
@@ -220,6 +190,7 @@ func (p *Parser) parseBracketSelector() (*SelectorExpr, error) {
 	case '*':
 		p.pos++
 		return &SelectorExpr{Kind: SelectorWildcard}, nil
+
 	case '?':
 		p.pos++
 		p.skipWS()
@@ -228,12 +199,14 @@ func (p *Parser) parseBracketSelector() (*SelectorExpr, error) {
 			return nil, err
 		}
 		return &SelectorExpr{Kind: SelectorFilter, Filter: fl}, nil
+
 	case '\'', '"':
 		s, err := p.parseString()
 		if err != nil {
 			return nil, err
 		}
 		return &SelectorExpr{Kind: SelectorName, Name: s}, nil
+
 	default:
 		return p.parseIndexOrSlice()
 	}
@@ -247,11 +220,7 @@ func (p *Parser) parseIndexOrSlice() (*SelectorExpr, error) {
 	if p.peek() != ':' {
 		n, ok := p.parseIntLiteral()
 		if !ok {
-			return nil, wrapPathError(
-				p.text,
-				p.pos,
-				ErrUnexpectedToken,
-			)
+			return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 		}
 		hasStart = true
 		start = n
@@ -314,14 +283,14 @@ func (p *Parser) parseOr() (FilterExpr, error) {
 	}
 	for {
 		p.skipWS()
-		if !p.consumeString("||") {
+		if !p.consumeString(OpOr) {
 			return left, nil
 		}
 		right, err := p.parseAnd()
 		if err != nil {
 			return nil, err
 		}
-		left = &BinaryExpr{Op: "||", Left: left, Right: right}
+		left = &BinaryExpr{Op: OpOr, Left: left, Right: right}
 	}
 }
 
@@ -332,14 +301,14 @@ func (p *Parser) parseAnd() (FilterExpr, error) {
 	}
 	for {
 		p.skipWS()
-		if !p.consumeString("&&") {
+		if !p.consumeString(OpAnd) {
 			return left, nil
 		}
 		right, err := p.parseCompare()
 		if err != nil {
 			return nil, err
 		}
-		left = &BinaryExpr{Op: "&&", Left: left, Right: right}
+		left = &BinaryExpr{Op: OpAnd, Left: left, Right: right}
 	}
 }
 
@@ -352,18 +321,23 @@ func (p *Parser) parseCompare() (FilterExpr, error) {
 		p.skipWS()
 		op := ""
 		switch {
-		case p.consumeString("=="):
-			op = "=="
-		case p.consumeString("!="):
-			op = "!="
-		case p.consumeString("<="):
-			op = "<="
-		case p.consumeString(">="):
-			op = ">="
-		case p.consume('<'):
-			op = "<"
-		case p.consume('>'):
-			op = ">"
+		case p.consumeString(OpEq):
+			op = OpEq
+
+		case p.consumeString(OpNe):
+			op = OpNe
+
+		case p.consumeString(OpLte):
+			op = OpLte
+
+		case p.consumeString(OpGte):
+			op = OpGte
+
+		case p.consume(rune(OpLt[0])):
+			op = OpLt
+
+		case p.consume(rune(OpGt[0])):
+			op = OpGt
 		}
 		if op == "" {
 			return left, nil
@@ -378,12 +352,12 @@ func (p *Parser) parseCompare() (FilterExpr, error) {
 
 func (p *Parser) parseUnary() (FilterExpr, error) {
 	p.skipWS()
-	if p.consume('!') {
+	if p.consume(rune(OpNot[0])) {
 		ex, err := p.parseUnary()
 		if err != nil {
 			return nil, err
 		}
-		return &UnaryExpr{Op: "!", Expr: ex}, nil
+		return &UnaryExpr{Op: OpNot, Expr: ex}, nil
 	}
 	return p.parsePrimary()
 }
@@ -405,12 +379,14 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 			return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 		}
 		return ex, nil
+
 	case '\'', '"':
 		s, err := p.parseString()
 		if err != nil {
 			return nil, err
 		}
 		return &LiteralExpr{Value: s}, nil
+
 	case '$':
 		p.pos++
 		path, err := p.parseRelativePath()
@@ -418,6 +394,7 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 			return nil, err
 		}
 		return &PathValueExpr{Absolute: true, Path: path}, nil
+
 	case '@':
 		p.pos++
 		path, err := p.parseRelativePath()
@@ -425,6 +402,7 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 			return nil, err
 		}
 		return &PathValueExpr{Absolute: false, Path: path}, nil
+
 	default:
 		if isNumberStart(p.peek()) {
 			n, ok := p.parseNumberLiteral()
@@ -510,26 +488,34 @@ func (p *Parser) parseString() (string, error) {
 		switch esc {
 		case '\\', '/':
 			b.WriteRune(esc)
+
 		case '\'':
 			if q != '\'' {
 				return "", wrapPathError(p.text, p.pos, ErrBadEscape)
 			}
 			b.WriteRune(esc)
+
 		case '"':
 			if q != '"' {
 				return "", wrapPathError(p.text, p.pos, ErrBadEscape)
 			}
 			b.WriteRune(esc)
+
 		case 'b':
 			b.WriteByte('\b')
+
 		case 'f':
 			b.WriteByte('\f')
+
 		case 'n':
 			b.WriteByte('\n')
+
 		case 'r':
 			b.WriteByte('\r')
+
 		case 't':
 			b.WriteByte('\t')
+
 		case 'u':
 			if p.pos+4 > len(p.src) {
 				return "", wrapPathError(p.text, p.pos, ErrBadEscape)
@@ -572,6 +558,7 @@ func (p *Parser) parseString() (string, error) {
 				return "", wrapPathError(p.text, p.pos, ErrBadEscape)
 			}
 			b.WriteRune(r)
+
 		default:
 			return "", wrapPathError(p.text, p.pos, ErrBadEscape)
 		}
@@ -720,6 +707,28 @@ func (p *Parser) consumeString(v string) bool {
 	return true
 }
 
+func topLevelPathOrFilter(expr FilterExpr) *PathExpr {
+	if path, ok := expr.(*PathValueExpr); ok && path.Absolute {
+		return path.Path
+	}
+	return topLevelFilterPath(expr)
+}
+
+func topLevelFilterPath(filter FilterExpr) *PathExpr {
+	return &PathExpr{
+		Segments: []*SegmentExpr{
+			{
+				Selectors: []*SelectorExpr{
+					{
+						Kind:   SelectorFilter,
+						Filter: filter,
+					},
+				},
+			},
+		},
+	}
+}
+
 func isDigit(r rune) bool {
 	return r >= '0' && r <= '9'
 }
@@ -748,8 +757,10 @@ func isNameStart(r rune) bool {
 	switch {
 	case r == '_':
 		return true
+
 	case r >= 0x80:
 		return true
+
 	default:
 		return unicode.IsLetter(r)
 	}

@@ -101,30 +101,22 @@ func MakeSelectorF01N(plan *SlicePlan) SelectorFunc {
 
 // MakeSelectorF11PP builds a selector for selectorCaseF11PP
 func MakeSelectorF11PP(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceF11PP,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceF11PP)
 }
 
 // MakeSelectorF11PN builds a selector for selectorCaseF11PN
 func MakeSelectorF11PN(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceF11PN,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceF11PN)
 }
 
 // MakeSelectorF11NP builds a selector for selectorCaseF11NP
 func MakeSelectorF11NP(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceF11NP,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceF11NP)
 }
 
 // MakeSelectorF11NN builds a selector for selectorCaseF11NN
 func MakeSelectorF11NN(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceF11NN,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceF11NN)
 }
 
 // MakeSelectorB00 builds a selector for selectorCaseB00
@@ -154,30 +146,22 @@ func MakeSelectorB01N(plan *SlicePlan) SelectorFunc {
 
 // MakeSelectorB11PP builds a selector for selectorCaseB11PP
 func MakeSelectorB11PP(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceB11PP,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceB11PP)
 }
 
 // MakeSelectorB11PN builds a selector for selectorCaseB11PN
 func MakeSelectorB11PN(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceB11PN,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceB11PN)
 }
 
 // MakeSelectorB11NP builds a selector for selectorCaseB11NP
 func MakeSelectorB11NP(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceB11NP,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceB11NP)
 }
 
 // MakeSelectorB11NN builds a selector for selectorCaseB11NN
 func MakeSelectorB11NN(plan *SlicePlan) SelectorFunc {
-	return makeSelector2(
-		plan.Start, plan.End, plan.Step, appendSliceB11NN,
-	)
+	return makeSelector2(plan.Start, plan.End, plan.Step, appendSliceB11NN)
 }
 
 func selectorCaseFor(s *SliceExpr) selectorCase {
@@ -191,24 +175,30 @@ func selectorCaseFor(s *SliceExpr) selectorCase {
 		switch {
 		case !s.HasStart && !s.HasEnd:
 			return selectorCaseF00
+
 		case s.HasStart && !s.HasEnd:
 			if s.Start >= 0 {
 				return selectorCaseF10P
 			}
 			return selectorCaseF10N
+
 		case !s.HasStart && s.HasEnd:
 			if s.End >= 0 {
 				return selectorCaseF01P
 			}
 			return selectorCaseF01N
+
 		default:
 			switch {
 			case s.Start >= 0 && s.End >= 0:
 				return selectorCaseF11PP
+
 			case s.Start >= 0 && s.End < 0:
 				return selectorCaseF11PN
+
 			case s.Start < 0 && s.End >= 0:
 				return selectorCaseF11NP
+
 			default:
 				return selectorCaseF11NN
 			}
@@ -218,24 +208,30 @@ func selectorCaseFor(s *SliceExpr) selectorCase {
 	switch {
 	case !s.HasStart && !s.HasEnd:
 		return selectorCaseB00
+
 	case s.HasStart && !s.HasEnd:
 		if s.Start >= 0 {
 			return selectorCaseB10P
 		}
 		return selectorCaseB10N
+
 	case !s.HasStart && s.HasEnd:
 		if s.End >= 0 {
 			return selectorCaseB01P
 		}
 		return selectorCaseB01N
+
 	default:
 		switch {
 		case s.Start >= 0 && s.End >= 0:
 			return selectorCaseB11PP
+
 		case s.Start >= 0 && s.End < 0:
 			return selectorCaseB11PN
+
 		case s.Start < 0 && s.End >= 0:
 			return selectorCaseB11NP
+
 		default:
 			return selectorCaseB11NN
 		}

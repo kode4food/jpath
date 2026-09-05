@@ -17,17 +17,20 @@ func (c *Compiler) Compile(path *PathExpr) (Path, error) {
 	return compilePath(path, c.registry)
 }
 
-func compilePath(path *PathExpr, registry *Registry) (Path, error) {
-	if err := validatePath(path, registry); err != nil {
+func compilePath(path *PathExpr, reg *Registry) (Path, error) {
+	if err := validatePath(path, reg); err != nil {
 		return nil, err
 	}
-	return makePath(path, registry)
+	return makePath(path, reg)
 }
 
-func makePath(path *PathExpr, registry *Registry) (Path, error) {
+func makePath(path *PathExpr, reg *Registry) (Path, error) {
+	if isSingularPath(path) {
+		return makeSingularPath(path), nil
+	}
 	segments := make([]SegmentFunc, len(path.Segments))
-	for idx, segment := range path.Segments {
-		compiled, err := compileSegment(segment, registry)
+	for idx, seg := range path.Segments {
+		compiled, err := compileSegment(seg, reg)
 		if err != nil {
 			return nil, err
 		}
@@ -36,26 +39,22 @@ func makePath(path *PathExpr, registry *Registry) (Path, error) {
 	return ComposePath(segments...), nil
 }
 
-func compileSegment(
-	segment *SegmentExpr, registry *Registry,
-) (SegmentFunc, error) {
-	selectors := make([]SelectorFunc, len(segment.Selectors))
-	for idx, selector := range segment.Selectors {
-		compiled, err := compileSelector(selector, registry)
+func compileSegment(seg *SegmentExpr, reg *Registry) (SegmentFunc, error) {
+	selectors := make([]SelectorFunc, len(seg.Selectors))
+	for idx, selector := range seg.Selectors {
+		compiled, err := compileSelector(selector, reg)
 		if err != nil {
 			return nil, err
 		}
 		selectors[idx] = compiled
 	}
-	if segment.Descendant {
+	if seg.Descendant {
 		return DescendantSegment(selectors...), nil
 	}
 	return ChildSegment(selectors...), nil
 }
 
-func compileSelector(
-	sel *SelectorExpr, registry *Registry,
-) (SelectorFunc, error) {
+func compileSelector(sel *SelectorExpr, reg *Registry) (SelectorFunc, error) {
 	switch sel.Kind {
 	case SelectorName:
 		return SelectName(sel.Name), nil
@@ -70,24 +69,24 @@ func compileSelector(
 		return SelectSlice(sel.Slice), nil
 
 	case SelectorFilter:
-		filter, err := compileFilter(sel.Filter, registry)
+		filter, err := compilePredicate(sel.Filter, reg)
 		if err != nil {
 			return nil, err
 		}
-		return SelectFilter(filter), nil
+		return selectPredicate(filter), nil
 
 	default:
-		return nil, fmt.Errorf("unknown selector kind")
+		return nil, fmt.Errorf("%w: %d", ErrUnknownSelector, sel.Kind)
 	}
 }
 
-func compileFilter(expr FilterExpr, registry *Registry) (FilterFunc, error) {
+func compileFilter(expr FilterExpr, reg *Registry) (FilterFunc, error) {
 	switch v := expr.(type) {
 	case *LiteralExpr:
 		return Literal(v.Value), nil
 
 	case *PathValueExpr:
-		path, err := makePath(v.Path, registry)
+		path, err := makePath(v.Path, reg)
 		if err != nil {
 			return nil, err
 		}
@@ -96,62 +95,31 @@ func compileFilter(expr FilterExpr, registry *Registry) (FilterFunc, error) {
 		}
 		return PathCurrent(path), nil
 
-	case *UnaryExpr:
-		exprFunc, err := compileFilter(v.Expr, registry)
+	case *UnaryExpr, *BinaryExpr:
+		predicate, err := compilePredicate(expr, reg)
 		if err != nil {
 			return nil, err
 		}
-		if v.Op == "!" {
-			return Not(exprFunc), nil
-		}
-		return nil, fmt.Errorf("unknown unary operator: %s", v.Op)
-
-	case *BinaryExpr:
-		leftFunc, err := compileFilter(v.Left, registry)
-		if err != nil {
-			return nil, err
-		}
-		rightFunc, err := compileFilter(v.Right, registry)
-		if err != nil {
-			return nil, err
-		}
-		switch v.Op {
-		case "&&":
-			return And(leftFunc, rightFunc), nil
-		case "||":
-			return Or(leftFunc, rightFunc), nil
-		case "==":
-			return Eq(leftFunc, rightFunc), nil
-		case "!=":
-			return Ne(leftFunc, rightFunc), nil
-		case "<":
-			return Lt(leftFunc, rightFunc), nil
-		case "<=":
-			return Le(leftFunc, rightFunc), nil
-		case ">":
-			return Gt(leftFunc, rightFunc), nil
-		case ">=":
-			return Ge(leftFunc, rightFunc), nil
-		default:
-			return nil, fmt.Errorf("unknown operator: %s", v.Op)
-		}
+		return func(ctx *FilterCtx) *Value {
+			return ScalarValue(predicate(ctx))
+		}, nil
 
 	case *FuncExpr:
 		args := make([]FilterFunc, len(v.Args))
 		for idx, arg := range v.Args {
-			compiled, err := compileFilter(arg, registry)
+			compiled, err := compileFilter(arg, reg)
 			if err != nil {
 				return nil, err
 			}
 			args[idx] = compiled
 		}
-		def, ok := registry.function(v.Name)
+		def, ok := reg.function(v.Name)
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUnknownFunc, v.Name)
 		}
 		return Call(def.Eval, args...), nil
 
 	default:
-		return nil, fmt.Errorf("unknown filter expression")
+		return nil, ErrUnknownExpr
 	}
 }

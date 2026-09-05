@@ -18,6 +18,15 @@ const (
 )
 
 var (
+	// ErrUnknownSelector indicates an unsupported AST selector kind
+	ErrUnknownSelector = errors.New("unknown selector kind")
+
+	// ErrUnknownOperator indicates an unsupported AST operator
+	ErrUnknownOperator = errors.New("unknown operator")
+
+	// ErrUnknownExpr indicates an unsupported filter AST expression
+	ErrUnknownExpr = errors.New("unknown filter expression")
+
 	// ErrLiteralMustBeCompared is raised for bare literals in logical context
 	ErrLiteralMustBeCompared = errors.New("literal must be compared")
 
@@ -30,9 +39,7 @@ var (
 	ErrInvalidFuncArity = errors.New("invalid function arity")
 
 	// ErrFuncResultMustBeCompared is raised for logical use without compare
-	ErrFuncResultMustBeCompared = errors.New(
-		"function result must be compared",
-	)
+	ErrFuncResultMustBeCompared = errors.New("function result must be compared")
 
 	// ErrFuncResultMustNotBeCompared is raised for prohibited comparisons
 	ErrFuncResultMustNotBeCompared = errors.New(
@@ -50,15 +57,14 @@ var (
 	)
 )
 
-func validatePath(path *PathExpr, registry *Registry) error {
-	for _, sg := range path.Segments {
-		for _, sel := range sg.Selectors {
+func validatePath(path *PathExpr, reg *Registry) error {
+	for _, seg := range path.Segments {
+		for _, sel := range seg.Selectors {
 			if sel.Kind != SelectorFilter {
 				continue
 			}
 			if err := validateExpr(
-				sel.Filter, contextLogical, false,
-				registry,
+				sel.Filter, contextLogical, false, reg,
 			); err != nil {
 				return err
 			}
@@ -68,58 +74,55 @@ func validatePath(path *PathExpr, registry *Registry) error {
 }
 
 func validateExpr(
-	ex FilterExpr, ctx exprContext, inComparison bool, registry *Registry,
+	ex FilterExpr, ctx exprContext, inComparison bool, reg *Registry,
 ) error {
 	switch v := ex.(type) {
 	case *LiteralExpr:
 		if ctx == contextLogical {
-			return fmt.Errorf("%w", ErrLiteralMustBeCompared)
+			return ErrLiteralMustBeCompared
 		}
 		return nil
 
 	case *PathValueExpr:
 		if inComparison && !isSingularPath(v.Path) {
-			return fmt.Errorf("%w", ErrCompRequiresSingularQuery)
+			return ErrCompRequiresSingularQuery
 		}
 		return nil
 
 	case *UnaryExpr:
-		return validateExpr(v.Expr, contextLogical, false, registry)
+		return validateExpr(v.Expr, contextLogical, false, reg)
 
 	case *BinaryExpr:
 		switch v.Op {
-		case "&&", "||":
+		case OpAnd, OpOr:
 			if err := validateExpr(
-				v.Left, contextLogical, false,
-				registry,
+				v.Left, contextLogical, false, reg,
 			); err != nil {
 				return err
 			}
-			return validateExpr(v.Right, contextLogical, false, registry)
+			return validateExpr(v.Right, contextLogical, false, reg)
 
-		case "==", "!=", "<", "<=", ">", ">=":
+		case OpEq, OpNe, OpLt, OpLte, OpGt, OpGte:
 			if err := validateExpr(
-				v.Left, contextComparisonOperand, true, registry,
+				v.Left, contextComparisonOperand, true, reg,
 			); err != nil {
 				return err
 			}
 			return validateExpr(
-				v.Right, contextComparisonOperand, true,
-				registry,
+				v.Right, contextComparisonOperand, true, reg,
 			)
 
 		default:
-			return fmt.Errorf("unknown operator: %s", v.Op)
+			return fmt.Errorf("%w: %s", ErrUnknownOperator, v.Op)
 		}
 
 	case *FuncExpr:
-		if err := validateFunction(v, ctx, inComparison, registry); err != nil {
+		if err := validateFunction(v, ctx, inComparison, reg); err != nil {
 			return err
 		}
 		for _, a := range v.Args {
 			if err := validateExpr(
-				a, contextFunctionArg, false,
-				registry,
+				a, contextFunctionArg, false, reg,
 			); err != nil {
 				return err
 			}
@@ -127,14 +130,14 @@ func validateExpr(
 		return nil
 
 	default:
-		return fmt.Errorf("unknown expression")
+		return ErrUnknownExpr
 	}
 }
 
 func validateFunction(
-	f *FuncExpr, ctx exprContext, inComparison bool, registry *Registry,
+	f *FuncExpr, ctx exprContext, inComparison bool, reg *Registry,
 ) error {
-	def, ok := registry.function(f.Name)
+	def, ok := reg.function(f.Name)
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrUnknownFunc, f.Name)
 	}
@@ -158,11 +161,11 @@ func functionUse(ctx exprContext) FunctionUse {
 }
 
 func isSingularPath(path *PathExpr) bool {
-	for _, sg := range path.Segments {
-		if sg.Descendant || len(sg.Selectors) != 1 {
+	for _, seg := range path.Segments {
+		if seg.Descendant || len(seg.Selectors) != 1 {
 			return false
 		}
-		sl := sg.Selectors[0]
+		sl := seg.Selectors[0]
 		if sl.Kind != SelectorName && sl.Kind != SelectorIndex {
 			return false
 		}
@@ -177,10 +180,7 @@ func validateMatchSearchFunction(
 		return err
 	}
 	if inComparison {
-		return fmt.Errorf(
-			"%w: match/search",
-			ErrFuncResultMustNotBeCompared,
-		)
+		return fmt.Errorf("%w: match/search", ErrFuncResultMustNotBeCompared)
 	}
 	return nil
 }
@@ -235,9 +235,7 @@ func validateQueryArg(name string, arg FilterExpr) error {
 		return nil
 	}
 	return fmt.Errorf(
-		"%w: %s requires query argument",
-		ErrFuncRequiresQueryArgument,
-		name,
+		"%w: %s requires query argument", ErrFuncRequiresQueryArgument, name,
 	)
 }
 

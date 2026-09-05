@@ -1,5 +1,7 @@
 package jpath
 
+import "slices"
+
 type (
 	// Path is a compiled query function chain. Calling it executes the query
 	// against a JSON document
@@ -32,19 +34,16 @@ func DescendantSegment(selectors ...SelectorFunc) SegmentFunc {
 }
 
 func composeSegments(segments []SegmentFunc) SegmentFunc {
-	chain := segmentIdentity
-	for idx := len(segments) - 1; idx >= 0; idx-- {
-		current := segments[idx]
-		next := chain
-		chain = func(in []any, root any) []any {
-			return next(current(in, root), root)
-		}
+	if len(segments) == 1 {
+		return segments[0]
 	}
-	return chain
-}
-
-func segmentIdentity(in []any, _ any) []any {
-	return in
+	segments = slices.Clone(segments)
+	return func(in []any, root any) []any {
+		for _, seg := range segments {
+			in = seg(in, root)
+		}
+		return in
+	}
 }
 
 func composeSegment(selectors []SelectorFunc, descendant bool) SegmentFunc {
@@ -69,15 +68,16 @@ func composeSegment(selectors []SelectorFunc, descendant bool) SegmentFunc {
 }
 
 func composeSelectors(selectors []SelectorFunc) SelectorFunc {
-	chain := selectorIdentity
-	for idx := len(selectors) - 1; idx >= 0; idx-- {
-		current := selectors[idx]
-		next := chain
-		chain = func(out []any, node, root any) []any {
-			return next(current(out, node, root), node, root)
-		}
+	if len(selectors) == 1 {
+		return selectors[0]
 	}
-	return chain
+	selectors = slices.Clone(selectors)
+	return func(out []any, node, root any) []any {
+		for _, selector := range selectors {
+			out = selector(out, node, root)
+		}
+		return out
+	}
 }
 
 func selectorIdentity(out []any, _, _ any) []any {
@@ -101,6 +101,7 @@ func walkDescendants(node any, visit func(any)) {
 		for _, elem := range v {
 			walkDescendants(elem, visit)
 		}
+
 	case map[string]any:
 		for _, key := range sortedKeys(v) {
 			walkDescendants(v[key], visit)

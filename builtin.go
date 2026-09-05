@@ -1,16 +1,55 @@
 package jpath
 
 import (
-	"maps"
 	"regexp"
 
 	"github.com/kode4food/lru"
 )
 
+type regexMatcher struct {
+	cache *lru.Cache[*regexp.Regexp]
+}
+
 const regexCacheLimit = 4096
 
-var (
-	defaultFunctions = map[string]*FunctionDefinition{
+func (r *regexMatcher) fullMatch(args []*Value) *Value {
+	match, ok := evalMatchArguments(args)
+	if !ok {
+		return ScalarValue(nothingType{})
+	}
+	match.pattern = "^(?:" + match.pattern + ")$"
+	return r.match(match)
+}
+
+func (r *regexMatcher) partialMatch(args []*Value) *Value {
+	match, ok := evalMatchArguments(args)
+	if !ok {
+		return ScalarValue(nothingType{})
+	}
+	return r.match(match)
+}
+
+type matchArgs struct {
+	text    string
+	pattern string
+}
+
+func (r *regexMatcher) match(args matchArgs) *Value {
+	pattern := normalizeDotPattern(args.pattern)
+	re, err := r.cache.Get(pattern, func() (*regexp.Regexp, error) {
+		return regexp.Compile(pattern)
+	})
+	if err != nil || re == nil {
+		return ScalarValue(nothingType{})
+	}
+	return ScalarValue(re.MatchString(args.text))
+}
+
+func registerDefaultFunctions(reg *Registry) {
+	matcher := &regexMatcher{
+		cache: lru.NewCache[*regexp.Regexp](regexCacheLimit),
+	}
+	reg.functions = map[string]*FunctionDefinition{
 		"length": {
 			Validate: validateLengthFunction,
 			Eval:     evalLength,
@@ -25,19 +64,13 @@ var (
 		},
 		"match": {
 			Validate: validateMatchSearchFunction,
-			Eval:     evalFullMatch,
+			Eval:     matcher.fullMatch,
 		},
 		"search": {
 			Validate: validateMatchSearchFunction,
-			Eval:     evalPartialMatch,
+			Eval:     matcher.partialMatch,
 		},
 	}
-
-	regexCache = lru.NewCache[*regexp.Regexp](regexCacheLimit)
-)
-
-func registerDefaultFunctions(r *Registry) {
-	maps.Copy(r.functions, defaultFunctions)
 }
 
 func validateLengthFunction(
@@ -60,107 +93,75 @@ func validateValueFunction(
 
 func evalLength(args []*Value) *Value {
 	if len(args) != 1 {
-		return ScalarValue(nothing)
+		return ScalarValue(nothingType{})
 	}
-	v := args[0]
-	if v.IsNodes {
-		if len(v.Nodes) != 1 {
-			return ScalarValue(nothing)
-		}
-		return evalLengthValue(v.Nodes[0])
+	value, ok := args[0].singularValue()
+	if !ok {
+		return ScalarValue(nothingType{})
 	}
-	return evalLengthValue(v.Scalar)
+	return evalLengthValue(value)
 }
 
 func evalLengthValue(value any) *Value {
 	switch raw := value.(type) {
 	case string:
 		return ScalarValue(float64(len([]rune(raw))))
+
 	case []any:
 		return ScalarValue(float64(len(raw)))
+
 	case map[string]any:
 		return ScalarValue(float64(len(raw)))
+
 	default:
-		return ScalarValue(nothing)
+		return ScalarValue(nothingType{})
 	}
 }
 
 func evalCount(args []*Value) *Value {
 	if len(args) != 1 {
-		return ScalarValue(nothing)
+		return ScalarValue(nothingType{})
 	}
 	v := args[0]
 	if v.IsNodes {
 		return ScalarValue(float64(len(v.Nodes)))
 	}
-	return ScalarValue(nothing)
+	return ScalarValue(nothingType{})
 }
 
 func evalValueFunc(args []*Value) *Value {
 	if len(args) != 1 {
-		return ScalarValue(nothing)
+		return ScalarValue(nothingType{})
 	}
 	v := args[0]
-	if v.IsNodes {
-		if len(v.Nodes) != 1 {
-			return ScalarValue(nothing)
-		}
-		return ScalarValue(v.Nodes[0])
+	if !v.IsNodes {
+		return v
 	}
-	return v
+	if len(v.Nodes) != 1 {
+		return ScalarValue(nothingType{})
+	}
+	return ScalarValue(v.Nodes[0])
 }
 
-func evalFullMatch(args []*Value) *Value {
-	left, pattern, ok := evalMatchArguments(args)
-	if !ok {
-		return ScalarValue(nothing)
-	}
-	return evalPatternMatch(left, "^(?:"+pattern+")$")
-}
-
-func evalPartialMatch(args []*Value) *Value {
-	left, pattern, ok := evalMatchArguments(args)
-	if !ok {
-		return ScalarValue(nothing)
-	}
-	return evalPatternMatch(left, pattern)
-}
-
-func evalMatchArguments(args []*Value) (string, string, bool) {
+func evalMatchArguments(args []*Value) (matchArgs, bool) {
 	if len(args) != 2 {
-		return "", "", false
+		return matchArgs{}, false
 	}
 	lhs, ok := args[0].singularValue()
 	if !ok {
-		return "", "", false
+		return matchArgs{}, false
 	}
 	rhs, ok := args[1].singularValue()
 	if !ok {
-		return "", "", false
+		return matchArgs{}, false
 	}
 	left, ok := lhs.(string)
 	if !ok {
-		return "", "", false
+		return matchArgs{}, false
 	}
 	pattern, ok := rhs.(string)
 	if !ok {
-		return "", "", false
+		return matchArgs{}, false
 	}
-	return left, pattern, true
-}
-
-func evalPatternMatch(left, pattern string) *Value {
-	pattern = normalizeDotPattern(pattern)
-	re, ok := compileMatchPattern(pattern)
-	if !ok {
-		return ScalarValue(nothing)
-	}
-	return ScalarValue(re.MatchString(left))
-}
-
-func compileMatchPattern(pattern string) (*regexp.Regexp, bool) {
-	re, err := regexCache.Get(pattern, func() (*regexp.Regexp, error) {
-		return regexp.Compile(pattern)
-	})
-	return re, err == nil && re != nil
+	return matchArgs{text: left, pattern: pattern}, true
 }

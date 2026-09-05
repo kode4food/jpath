@@ -76,8 +76,25 @@ const (
 	SelectorFilter                       // child values by filter predicate
 )
 
-func (l *LiteralExpr) filterExpr()   {}
+// Operators used by unary and binary filter expressions.
+const (
+	OpAnd = "&&"
+	OpOr  = "||"
+	OpNot = "!"
+	OpEq  = "=="
+	OpNe  = "!="
+	OpLt  = "<"
+	OpLte = "<="
+	OpGt  = ">"
+	OpGte = ">="
+)
+
+func (l *LiteralExpr) filterExpr() {}
+
 func (p *PathValueExpr) filterExpr() {}
-func (u *UnaryExpr) filterExpr()     {}
-func (b *BinaryExpr) filterExpr()    {}
-func (f *FuncExpr) filterExpr()      {}
+
+func (u *UnaryExpr) filterExpr() {}
+
+func (b *BinaryExpr) filterExpr() {}
+
+func (f *FuncExpr) filterExpr() {}

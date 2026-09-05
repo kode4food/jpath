@@ -63,45 +63,49 @@ func SelectSlice(s *SliceExpr) SelectorFunc {
 
 // SelectFilter builds a selector for filter-based child selection
 func SelectFilter(filter FilterFunc) SelectorFunc {
-	return func(out []any, node, root any) []any {
-		return appendFilter(out, node, root, filter)
-	}
+	return selectPredicate(func(ctx *FilterCtx) bool {
+		return toBool(filter(ctx))
+	})
 }
 
 func appendWildcard(out []any, node any) []any {
 	switch v := node.(type) {
 	case []any:
 		return append(out, v...)
+
 	case map[string]any:
 		for _, key := range sortedKeys(v) {
 			out = append(out, v[key])
 		}
 		return out
+
 	default:
 		return out
 	}
 }
 
-func appendFilter(out []any, node, root any, flt FilterFunc) []any {
+func appendFilter(out []any, node, root any, flt predicateFunc) []any {
 	ctx := &FilterCtx{Root: root}
 	switch v := node.(type) {
 	case []any:
 		for _, elem := range v {
 			ctx.Current = elem
-			if toBool(flt(ctx)) {
+			if flt(ctx) {
 				out = append(out, elem)
 			}
 		}
 		return out
+
 	case map[string]any:
 		for _, k := range sortedKeys(v) {
 			elem := v[k]
 			ctx.Current = elem
-			if toBool(flt(ctx)) {
+			if flt(ctx) {
 				out = append(out, elem)
 			}
 		}
 		return out
+
 	default:
 		return out
 	}

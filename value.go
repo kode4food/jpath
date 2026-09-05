@@ -11,8 +11,6 @@ type (
 	nothingType struct{}
 )
 
-var nothing nothingType
-
 // ScalarValue constructs a scalar filter value
 func ScalarValue(value any) *Value {
 	return &Value{Scalar: value}
@@ -36,23 +34,20 @@ func (v *Value) Count() int {
 // IsNothing reports whether this value is the internal "nothing" sentinel. A
 // node-list value is nothing only when it contains exactly one sentinel
 func (v *Value) IsNothing() bool {
-	if v.IsNodes {
-		if len(v.Nodes) != 1 {
-			return false
-		}
-		_, ok := v.Nodes[0].(nothingType)
-		return ok
+	value, ok := v.singularValue()
+	if !ok {
+		return false
 	}
-	_, ok := v.Scalar.(nothingType)
+	_, ok = value.(nothingType)
 	return ok
 }
 
 func (v *Value) singularValue() (any, bool) {
-	if v.IsNodes {
-		if len(v.Nodes) != 1 {
-			return nil, false
-		}
-		return v.Nodes[0], true
+	if !v.IsNodes {
+		return v.Scalar, true
 	}
-	return v.Scalar, true
+	if len(v.Nodes) != 1 {
+		return nil, false
+	}
+	return v.Nodes[0], true
 }

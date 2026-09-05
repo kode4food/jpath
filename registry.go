@@ -53,9 +53,7 @@ var (
 
 // NewRegistry creates a registry with default JSONPath functions
 func NewRegistry() *Registry {
-	res := &Registry{
-		functions: map[string]*FunctionDefinition{},
-	}
+	res := &Registry{}
 	registerDefaultFunctions(res)
 	return res
 }
@@ -78,7 +76,6 @@ func (r *Registry) RegisterDefinition(
 		return fmt.Errorf("%w: %s", ErrBadFuncDefinition, name)
 	}
 	if r.functions == nil {
-		r.functions = map[string]*FunctionDefinition{}
 		registerDefaultFunctions(r)
 	}
 	if _, ok := r.functions[name]; ok {
@@ -131,17 +128,12 @@ func (r *Registry) MustRegisterDefinition(
 
 // Parse parses a query string into a syntax tree
 func (r *Registry) Parse(query string) (*PathExpr, error) {
-	var p Parser
-	return p.Parse(query)
+	return Parse(query)
 }
 
 // MustParse parses a query string or panics
 func (r *Registry) MustParse(query string) *PathExpr {
-	res, err := r.Parse(query)
-	if err != nil {
-		panic(err)
-	}
-	return res
+	return MustParse(query)
 }
 
 // Compile compiles a parsed syntax tree into an executable Path
@@ -193,13 +185,13 @@ func WrapFunction(fn Function) Evaluator {
 		for idx, arg := range args {
 			val, ok := arg.singularValue()
 			if !ok {
-				return ScalarValue(nothing)
+				return ScalarValue(nothingType{})
 			}
 			values[idx] = val
 		}
 		res, ok := fn(values...)
 		if !ok {
-			return ScalarValue(nothing)
+			return ScalarValue(nothingType{})
 		}
 		return ScalarValue(res)
 	}
