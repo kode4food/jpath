@@ -46,6 +46,16 @@ matches := path(document)
 matches := jpath.MustQuery("$.store.book[*].title", document)
 ```
 
+### Top-level filter shorthand
+
+A query may also be a bare filter expression. `$.a == 1` is shorthand for `$[?$.a == 1]`, and `@.a == 1` for `$[?@.a == 1]`, so a predicate reads like one:
+
+```go
+matches := jpath.MustQuery(`$.name == "Professional Laptop"`, document)
+```
+
+A filter selects among a node's children, so it tests the children rather than the node itself, and it yields the matching children rather than a boolean. Read a non-empty result as true. `$[?@.type == "service"]` therefore asks whether a child of the root has `type == "service"`; to test the root's own member, name it as `$.type == "service"`. A filter that never mentions `@` decides every child the same way, so it is evaluated once per node instead of once per child.
+
 ## Registry Management
 
 | Signature | Description |

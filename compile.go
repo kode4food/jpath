@@ -90,6 +90,10 @@ func compileSelector(sel *SelectorExpr, reg *Registry) (SelectorFunc, error) {
 		if err != nil {
 			return nil, err
 		}
+		// functions may observe or alter what a repeated call would see
+		if currentFree(sel.Filter) && functionFree(sel.Filter) {
+			return selectConstantPredicate(filter), nil
+		}
 		return selectPredicate(filter), nil
 
 	default:

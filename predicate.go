@@ -10,6 +10,18 @@ func selectPredicate(predicate predicateFunc) SelectorFunc {
 	}
 }
 
+// a filter that never reads the current node reaches the same verdict for every
+// child, so it runs once per node and takes all children or none
+func selectConstantPredicate(predicate predicateFunc) SelectorFunc {
+	return func(out []any, node, root any) []any {
+		ctx := &FilterCtx{Root: root}
+		if !predicate(ctx) {
+			return out
+		}
+		return appendWildcard(out, node)
+	}
+}
+
 func compilePredicate(expr FilterExpr, reg *Registry) (predicateFunc, error) {
 	switch v := expr.(type) {
 	case *PathValueExpr:

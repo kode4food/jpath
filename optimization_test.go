@@ -168,6 +168,70 @@ func BenchmarkLogicalOptimization(b *testing.B) {
 	}
 }
 
+func TestConstantFilterOptimization(t *testing.T) {
+	reg := jpath.NewRegistry()
+	doc := map[string]any{
+		"n":    float64(1),
+		"tags": []any{"a", "b"},
+	}
+	all := []any{float64(1), []any{"a", "b"}}
+	for _, query := range []struct {
+		text string
+		want []any
+	}{
+		{"$[?$.n == 1]", all},
+		{"$[?$.n == 2]", []any{}},
+		{`$[?$.tags[?@ == "a"]]`, all},
+		{`$[?$.tags[?@ == "z"]]`, []any{}},
+		{`$[?$.n == 1 && $.tags[?@ == "b"]]`, all},
+		{`$.tags[?@ == "a"]`, []any{"a"}},
+		{"$.tags[?$.n == 1]", []any{"a", "b"}},
+		{"$.n[?$.n == 1]", []any{}},
+	} {
+		got := reg.MustQuery(query.text, doc)
+		if !reflect.DeepEqual(got, query.want) {
+			t.Fatalf("%s: got %v, want %v", query.text, got, query.want)
+		}
+	}
+}
+
+func TestConstantFilterPreservesEffects(t *testing.T) {
+	reg := jpath.NewRegistry()
+	calls := 0
+	reg.MustRegisterFunction("seen", 0, func(...any) (any, bool) {
+		calls++
+		return true, true
+	})
+	doc := map[string]any{"a": []any{1}, "x": 1, "y": 2, "z": 3}
+	got := reg.MustQuery("$[?$.a[?seen()]]", doc)
+	if len(got) != 4 || calls != 4 {
+		t.Fatalf("nested function collapsed: got %v, calls %d", got, calls)
+	}
+}
+
+func BenchmarkConstantFilter(b *testing.B) {
+	reg := jpath.NewRegistry()
+	doc := map[string]any{
+		"tags":     []any{"domain:payments", "tier:gold", "market:europe"},
+		"type":     "service",
+		"handling": "standard",
+	}
+	for _, query := range []string{
+		`$.tags[?@ == "tier:gold"]`,
+		`$.tags[?@ == "tier:gold"] && $.tags[?@ == "domain:payments"]`,
+		`$.type == "service" && $.handling == "standard"`,
+	} {
+		b.Run(query, func(b *testing.B) {
+			path := reg.MustCompile(reg.MustParse(query))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchmarkComplianceSink = path(doc)
+			}
+		})
+	}
+}
+
 func TestSingularPathOptimization(t *testing.T) {
 	reg := jpath.NewRegistry()
 	for _, tc := range []struct {

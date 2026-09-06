@@ -124,6 +124,27 @@ func factorLogical(expr *BinaryExpr) *BinaryExpr {
 	}
 }
 
+// a nested path carries its own current node, so only this expression's own
+// anchors decide whether the enclosing filter reads `@`
+func currentFree(expr FilterExpr) bool {
+	switch v := expr.(type) {
+	case *LiteralExpr:
+		return true
+
+	case *PathValueExpr:
+		return v.Absolute
+
+	case *UnaryExpr:
+		return currentFree(v.Expr)
+
+	case *BinaryExpr:
+		return currentFree(v.Left) && currentFree(v.Right)
+
+	default:
+		return false
+	}
+}
+
 func functionFree(expr FilterExpr) bool {
 	switch v := expr.(type) {
 	case *LiteralExpr:
