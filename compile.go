@@ -9,7 +9,9 @@ type Compiler struct {
 
 // NewCompiler creates a new Compiler
 func NewCompiler() *Compiler {
-	return &Compiler{}
+	return &Compiler{
+		registry: NewRegistry(),
+	}
 }
 
 // Compile compiles a parsed PathExpr into an executable Path
@@ -28,13 +30,25 @@ func makePath(path *PathExpr, reg *Registry) (Path, error) {
 	if isSingularPath(path) {
 		return makeSingularPath(path), nil
 	}
-	segments := make([]SegmentFunc, len(path.Segments))
-	for idx, seg := range path.Segments {
-		compiled, err := compileSegment(seg, reg)
+	segments := make([]SegmentFunc, 0, len(path.Segments))
+	for i := 0; i < len(path.Segments); {
+		end := i
+		for end < len(path.Segments) && isSingularSegment(path.Segments[end]) {
+			end++
+		}
+		if end-i > 1 {
+			segments = append(
+				segments, makeSingularSegment(path.Segments[i:end]),
+			)
+			i = end
+			continue
+		}
+		compiled, err := compileSegment(path.Segments[i], reg)
 		if err != nil {
 			return nil, err
 		}
-		segments[idx] = compiled
+		segments = append(segments, compiled)
+		i++
 	}
 	return ComposePath(segments...), nil
 }
@@ -48,10 +62,13 @@ func compileSegment(seg *SegmentExpr, reg *Registry) (SegmentFunc, error) {
 		}
 		selectors[idx] = compiled
 	}
-	if seg.Descendant {
-		return DescendantSegment(selectors...), nil
+	if !seg.Descendant {
+		return ChildSegment(selectors...), nil
 	}
-	return ChildSegment(selectors...), nil
+	if segmentFunctionFree(seg) {
+		return makeDescendantSegment(selectors), nil
+	}
+	return DescendantSegment(selectors...), nil
 }
 
 func compileSelector(sel *SelectorExpr, reg *Registry) (SelectorFunc, error) {
@@ -100,11 +117,18 @@ func compileFilter(expr FilterExpr, reg *Registry) (FilterFunc, error) {
 		if err != nil {
 			return nil, err
 		}
-		return func(ctx *FilterCtx) *Value {
-			return ScalarValue(predicate(ctx))
+		return func(ctx *FilterCtx) any {
+			return predicate(ctx)
 		}, nil
 
 	case *FuncExpr:
+		builtin, err := compileBuiltin(v, reg)
+		if err != nil {
+			return nil, err
+		}
+		if builtin != nil {
+			return builtin, nil
+		}
 		args := make([]FilterFunc, len(v.Args))
 		for idx, arg := range v.Args {
 			compiled, err := compileFilter(arg, reg)

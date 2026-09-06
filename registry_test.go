@@ -93,8 +93,8 @@ func TestRegistryExtensionFunction(t *testing.T) {
 			}
 			return nil
 		},
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{Scalar: true}
+		Eval: func(_ []any) any {
+			return true
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -194,11 +194,8 @@ func TestRegistryRegisterFunctionSingularCoercion(t *testing.T) {
 func TestRegistryExtensionFunctionNodes(t *testing.T) {
 	reg := jpath.NewRegistry()
 	err := reg.RegisterDefinition("nodeTruthy", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{
-				IsNodes: true,
-				Nodes:   []any{float64(1)},
-			}
+		Eval: func(_ []any) any {
+			return jpath.Nodes{float64(1)}
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -220,8 +217,8 @@ func TestRegistryFunctionIsolation(t *testing.T) {
 		) error {
 			return nil
 		},
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{Scalar: false}
+		Eval: func(_ []any) any {
+			return false
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -239,8 +236,8 @@ func TestRegistryFunctionIsolation(t *testing.T) {
 func TestRegistryRegisterFunctionErrors(t *testing.T) {
 	reg := jpath.NewRegistry()
 	err := reg.RegisterDefinition("1bad", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{}
+		Eval: func(_ []any) any {
+			return nil
 		},
 	})
 	assert.ErrorIs(t, err, jpath.ErrBadFuncName)
@@ -249,8 +246,8 @@ func TestRegistryRegisterFunctionErrors(t *testing.T) {
 	assert.ErrorIs(t, err, jpath.ErrBadFuncDefinition)
 
 	err = reg.RegisterDefinition("dup", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{}
+		Eval: func(_ []any) any {
+			return nil
 		},
 	})
 	if !assert.NoError(t, err) {
@@ -258,8 +255,8 @@ func TestRegistryRegisterFunctionErrors(t *testing.T) {
 	}
 
 	err = reg.RegisterDefinition("dup", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{}
+		Eval: func(_ []any) any {
+			return nil
 		},
 	})
 	assert.ErrorIs(t, err, jpath.ErrFuncExists)
@@ -270,16 +267,16 @@ func TestMustRegisterDefinition(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		reg.MustRegisterDefinition("alwaysTrue", &jpath.FunctionDefinition{
-			Eval: func(_ []*jpath.Value) *jpath.Value {
-				return &jpath.Value{Scalar: true}
+			Eval: func(_ []any) any {
+				return true
 			},
 		})
 	})
 
 	assert.Panics(t, func() {
 		reg.MustRegisterDefinition("alwaysTrue", &jpath.FunctionDefinition{
-			Eval: func(_ []*jpath.Value) *jpath.Value {
-				return &jpath.Value{Scalar: true}
+			Eval: func(_ []any) any {
+				return true
 			},
 		})
 	})

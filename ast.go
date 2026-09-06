@@ -76,7 +76,7 @@ const (
 	SelectorFilter                       // child values by filter predicate
 )
 
-// Operators used by unary and binary filter expressions.
+// Operators used by unary and binary filter expressions
 const (
 	OpAnd = "&&"
 	OpOr  = "||"

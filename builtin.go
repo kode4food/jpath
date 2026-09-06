@@ -2,54 +2,59 @@ package jpath
 
 import (
 	"regexp"
+	"unicode/utf8"
 
 	"github.com/kode4food/lru"
 )
 
-type regexMatcher struct {
-	cache *lru.Cache[*regexp.Regexp]
-}
+type (
+	regexMatcher struct {
+		cache *lru.Cache[*regexp.Regexp]
+	}
+
+	regexInput struct {
+		text    string
+		pattern string
+	}
+)
 
 const regexCacheLimit = 4096
 
-func (r *regexMatcher) fullMatch(args []*Value) *Value {
+func (r *regexMatcher) fullMatch(args []any) any {
+	return r.evalMatch(args, true)
+}
+
+func (r *regexMatcher) partialMatch(args []any) any {
+	return r.evalMatch(args, false)
+}
+
+func (r *regexMatcher) evalMatch(args []any, full bool) any {
 	match, ok := evalMatchArguments(args)
 	if !ok {
-		return ScalarValue(nothingType{})
+		return Nodes(nil)
 	}
-	match.pattern = "^(?:" + match.pattern + ")$"
+	if full {
+		match.pattern = "^(?:" + match.pattern + ")$"
+	}
 	return r.match(match)
 }
 
-func (r *regexMatcher) partialMatch(args []*Value) *Value {
-	match, ok := evalMatchArguments(args)
-	if !ok {
-		return ScalarValue(nothingType{})
+func (r *regexMatcher) match(args regexInput) any {
+	re, err := r.compile(args.pattern)
+	if err != nil {
+		return Nodes(nil)
 	}
-	return r.match(match)
+	return re.MatchString(args.text)
 }
 
-type matchArgs struct {
-	text    string
-	pattern string
-}
-
-func (r *regexMatcher) match(args matchArgs) *Value {
-	pattern := normalizeDotPattern(args.pattern)
-	re, err := r.cache.Get(pattern, func() (*regexp.Regexp, error) {
-		return regexp.Compile(pattern)
+func (r *regexMatcher) compile(pattern string) (*regexp.Regexp, error) {
+	return r.cache.Get(pattern, func() (*regexp.Regexp, error) {
+		return regexp.Compile(normalizeDotPattern(pattern))
 	})
-	if err != nil || re == nil {
-		return ScalarValue(nothingType{})
-	}
-	return ScalarValue(re.MatchString(args.text))
 }
 
-func registerDefaultFunctions(reg *Registry) {
-	matcher := &regexMatcher{
-		cache: lru.NewCache[*regexp.Regexp](regexCacheLimit),
-	}
-	reg.functions = map[string]*FunctionDefinition{
+func defaultFunctions(matcher *regexMatcher) map[string]*FunctionDefinition {
+	return map[string]*FunctionDefinition{
 		"length": {
 			Validate: validateLengthFunction,
 			Eval:     evalLength,
@@ -91,77 +96,60 @@ func validateValueFunction(
 	return validateUnaryComparedReq("value", args, use, inComparison)
 }
 
-func evalLength(args []*Value) *Value {
-	if len(args) != 1 {
-		return ScalarValue(nothingType{})
-	}
-	value, ok := args[0].singularValue()
+func evalLength(args []any) any {
+	value, ok := singularValue(args[0])
 	if !ok {
-		return ScalarValue(nothingType{})
+		return Nodes(nil)
 	}
 	return evalLengthValue(value)
 }
 
-func evalLengthValue(value any) *Value {
+func evalLengthValue(value any) any {
 	switch raw := value.(type) {
 	case string:
-		return ScalarValue(float64(len([]rune(raw))))
+		return float64(utf8.RuneCountInString(raw))
 
 	case []any:
-		return ScalarValue(float64(len(raw)))
+		return float64(len(raw))
 
 	case map[string]any:
-		return ScalarValue(float64(len(raw)))
+		return float64(len(raw))
 
 	default:
-		return ScalarValue(nothingType{})
+		return Nodes(nil)
 	}
 }
 
-func evalCount(args []*Value) *Value {
-	if len(args) != 1 {
-		return ScalarValue(nothingType{})
+func evalCount(args []any) any {
+	if nodes, ok := args[0].(Nodes); ok {
+		return float64(len(nodes))
 	}
-	v := args[0]
-	if v.IsNodes {
-		return ScalarValue(float64(len(v.Nodes)))
-	}
-	return ScalarValue(nothingType{})
+	return Nodes(nil)
 }
 
-func evalValueFunc(args []*Value) *Value {
-	if len(args) != 1 {
-		return ScalarValue(nothingType{})
+func evalValueFunc(args []any) any {
+	if value, ok := singularValue(args[0]); ok {
+		return value
 	}
-	v := args[0]
-	if !v.IsNodes {
-		return v
-	}
-	if len(v.Nodes) != 1 {
-		return ScalarValue(nothingType{})
-	}
-	return ScalarValue(v.Nodes[0])
+	return Nodes(nil)
 }
 
-func evalMatchArguments(args []*Value) (matchArgs, bool) {
-	if len(args) != 2 {
-		return matchArgs{}, false
-	}
-	lhs, ok := args[0].singularValue()
+func evalMatchArguments(args []any) (regexInput, bool) {
+	lhs, ok := singularValue(args[0])
 	if !ok {
-		return matchArgs{}, false
+		return regexInput{}, false
 	}
-	rhs, ok := args[1].singularValue()
+	rhs, ok := singularValue(args[1])
 	if !ok {
-		return matchArgs{}, false
+		return regexInput{}, false
 	}
 	left, ok := lhs.(string)
 	if !ok {
-		return matchArgs{}, false
+		return regexInput{}, false
 	}
 	pattern, ok := rhs.(string)
 	if !ok {
-		return matchArgs{}, false
+		return regexInput{}, false
 	}
-	return matchArgs{text: left, pattern: pattern}, true
+	return regexInput{text: left, pattern: pattern}, true
 }

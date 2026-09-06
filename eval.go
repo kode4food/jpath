@@ -6,101 +6,61 @@ import (
 )
 
 type (
-	FilterFunc func(*FilterCtx) *Value
+	// FilterFunc evaluates a filter to a scalar value or Nodes
+	FilterFunc func(*FilterCtx) any
 
+	// FilterCtx provides the document root and current node to a filter
 	FilterCtx struct {
 		Root    any
 		Current any
 	}
 
+	comparison struct {
+		left  any
+		right any
+	}
+
 	matchFunc func(left, right any) bool
 )
 
-func evalFunctionArgs(args []FilterFunc, ctx *FilterCtx) []*Value {
-	res := make([]*Value, len(args))
-	for idx, arg := range args {
-		res[idx] = arg(ctx)
+func compareValues(op string, values comparison) bool {
+	leftEmpty := valueCount(values.left) == 0
+	rightEmpty := valueCount(values.right) == 0
+	if leftEmpty || rightEmpty {
+		return op == OpEq && leftEmpty == rightEmpty ||
+			op == OpNe && leftEmpty != rightEmpty
 	}
-	return res
-}
+	var match matchFunc
+	switch op {
+	case OpEq:
+		match = reflect.DeepEqual
 
-func compareEmptyEq(left, right *Value) bool {
-	leftCount := left.Count()
-	rightCount := right.Count()
-	if leftCount == 0 && rightCount == 0 {
-		return true
-	}
-	if leftCount == 0 && right.IsNothing() {
-		return true
-	}
-	if rightCount == 0 && left.IsNothing() {
-		return true
-	}
-	return false
-}
+	case OpNe:
+		match = notDeepEqual
 
-func compareEmptyNe(left, right *Value) bool {
-	leftCount := left.Count()
-	rightCount := right.Count()
-	if leftCount == 0 && rightCount == 0 {
+	case OpLt:
+		match = lessThanMatch
+
+	case OpLte:
+		match = lessEqualMatch
+
+	case OpGt:
+		match = greaterThanMatch
+
+	case OpGte:
+		match = greaterEqualMatch
+
+	default:
 		return false
 	}
-	if leftCount == 0 && right.IsNothing() {
-		return false
-	}
-	if rightCount == 0 && left.IsNothing() {
-		return false
-	}
-	return true
+	return matchAny(values, match)
 }
 
-func compareValuesEq(left, right *Value) bool {
-	if left.Count() == 0 || right.Count() == 0 {
-		return compareEmptyEq(left, right)
-	}
-	return matchAny(left, right, reflect.DeepEqual)
-}
-
-func compareValuesNe(left, right *Value) bool {
-	if left.Count() == 0 || right.Count() == 0 {
-		return compareEmptyNe(left, right)
-	}
-	return matchAny(left, right, notDeepEqual)
-}
-
-func compareValuesLt(left, right *Value) bool {
-	if left.Count() == 0 || right.Count() == 0 {
-		return false
-	}
-	return matchAny(left, right, lessThanMatch)
-}
-
-func compareValuesLe(left, right *Value) bool {
-	if left.Count() == 0 || right.Count() == 0 {
-		return false
-	}
-	return matchAny(left, right, lessEqualMatch)
-}
-
-func compareValuesGt(left, right *Value) bool {
-	if left.Count() == 0 || right.Count() == 0 {
-		return false
-	}
-	return matchAny(left, right, greaterThanMatch)
-}
-
-func compareValuesGe(left, right *Value) bool {
-	if left.Count() == 0 || right.Count() == 0 {
-		return false
-	}
-	return matchAny(left, right, greaterEqualMatch)
-}
-
-func matchAny(left, right *Value, match matchFunc) bool {
-	if left.IsNodes {
-		if right.IsNodes {
-			for _, lv := range left.Nodes {
-				for _, rv := range right.Nodes {
+func matchAny(values comparison, match matchFunc) bool {
+	if left, ok := values.left.(Nodes); ok {
+		if right, ok := values.right.(Nodes); ok {
+			for _, lv := range left {
+				for _, rv := range right {
 					if match(lv, rv) {
 						return true
 					}
@@ -108,22 +68,22 @@ func matchAny(left, right *Value, match matchFunc) bool {
 			}
 			return false
 		}
-		for _, lv := range left.Nodes {
-			if match(lv, right.Scalar) {
+		for _, lv := range left {
+			if match(lv, values.right) {
 				return true
 			}
 		}
 		return false
 	}
-	if right.IsNodes {
-		for _, rv := range right.Nodes {
-			if match(left.Scalar, rv) {
+	if right, ok := values.right.(Nodes); ok {
+		for _, rv := range right {
+			if match(values.left, rv) {
 				return true
 			}
 		}
 		return false
 	}
-	return match(left.Scalar, right.Scalar)
+	return match(values.left, values.right)
 }
 
 func lessThan(left, right any) (bool, bool) {
@@ -182,15 +142,12 @@ func greaterEqualMatch(left, right any) bool {
 	return greaterThanMatch(left, right)
 }
 
-func toBool(v *Value) bool {
-	if v.IsNodes {
-		return len(v.Nodes) > 0
-	}
-	switch raw := v.Scalar.(type) {
-	case nil:
-		return false
+func toBool(value any) bool {
+	switch raw := value.(type) {
+	case Nodes:
+		return len(raw) > 0
 
-	case nothingType:
+	case nil:
 		return false
 
 	case bool:

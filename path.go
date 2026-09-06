@@ -67,6 +67,19 @@ func composeSegment(selectors []SelectorFunc, descendant bool) SegmentFunc {
 	}
 }
 
+func makeDescendantSegment(selectors []SelectorFunc) SegmentFunc {
+	chain := composeSelectors(selectors)
+	return func(in []any, root any) []any {
+		out := make([]any, 0)
+		for _, node := range in {
+			walkDescendants(node, func(node any) {
+				out = chain(out, node, root)
+			})
+		}
+		return out
+	}
+}
+
 func composeSelectors(selectors []SelectorFunc) SelectorFunc {
 	if len(selectors) == 1 {
 		return selectors[0]

@@ -79,7 +79,7 @@ registry.MustRegisterFunction(
 )
 ```
 
-Use `RegisterDefinition` when you need full control over validation rules, node-list arguments, or custom result shapes
+Use `RegisterDefinition` when you need full control over validation rules, node-list arguments, or custom result shapes.
 
 ## Status
 

@@ -4,12 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"regexp"
+
+	"github.com/kode4food/lru"
 )
 
 type (
-	// Registry stores function definitions and owns parse/compile/query methods
+	// Registry parses and compiles paths with an isolated function set
 	Registry struct {
 		functions map[string]*FunctionDefinition
+		matcher   *regexMatcher
 	}
 
 	// FunctionDefinition describes a filter function implementation
@@ -21,8 +25,8 @@ type (
 	// Validator validates function arguments for a call site
 	Validator func(args []FilterExpr, use FunctionUse, inComparison bool) error
 
-	// Evaluator evaluates wrapped arguments and returns a wrapped result
-	Evaluator func(args []*Value) *Value
+	// Evaluator evaluates scalar or Nodes arguments and returns either form
+	Evaluator func(args []any) any
 
 	// Function evaluates scalar arguments and returns a scalar result
 	Function func(args ...any) (any, bool)
@@ -53,9 +57,13 @@ var (
 
 // NewRegistry creates a registry with default JSONPath functions
 func NewRegistry() *Registry {
-	res := &Registry{}
-	registerDefaultFunctions(res)
-	return res
+	matcher := &regexMatcher{
+		cache: lru.NewCache[*regexp.Regexp](regexCacheLimit),
+	}
+	return &Registry{
+		functions: defaultFunctions(matcher),
+		matcher:   matcher,
+	}
 }
 
 // Clone makes an isolated copy of this registry
@@ -74,9 +82,6 @@ func (r *Registry) RegisterDefinition(
 	}
 	if def.Eval == nil {
 		return fmt.Errorf("%w: %s", ErrBadFuncDefinition, name)
-	}
-	if r.functions == nil {
-		registerDefaultFunctions(r)
 	}
 	if _, ok := r.functions[name]; ok {
 		return fmt.Errorf("%w: %s", ErrFuncExists, name)
@@ -180,20 +185,20 @@ func (r *Registry) function(name string) (*FunctionDefinition, bool) {
 
 // WrapFunction wraps a scalar function as an evaluator
 func WrapFunction(fn Function) Evaluator {
-	return func(args []*Value) *Value {
+	return func(args []any) any {
 		values := make([]any, len(args))
 		for idx, arg := range args {
-			val, ok := arg.singularValue()
+			val, ok := singularValue(arg)
 			if !ok {
-				return ScalarValue(nothingType{})
+				return Nodes(nil)
 			}
 			values[idx] = val
 		}
 		res, ok := fn(values...)
 		if !ok {
-			return ScalarValue(nothingType{})
+			return Nodes(nil)
 		}
-		return ScalarValue(res)
+		return res
 	}
 }
 

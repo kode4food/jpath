@@ -9,14 +9,11 @@ import (
 
 func TestPredicateComparisons(t *testing.T) {
 	reg := jpath.NewRegistry()
-	nothing := jpath.WrapFunction(func(...any) (any, bool) {
-		return nil, false
-	})(nil).Scalar
 	values := []any{
-		nil, nothing, false, true, 1, float64(1), "x", "y",
+		nil, false, true, 1, float64(1), "x", "y",
 		[]any{1}, map[string]any{"a": 1},
 	}
-	// Include absence independently on each side, as well as JSON null.
+	// Include absence independently on each side, as well as JSON null
 	var doc []any
 	for i := -1; i < len(values); i++ {
 		for j := -1; j < len(values); j++ {
@@ -40,15 +37,19 @@ func TestPredicateComparisons(t *testing.T) {
 		name string
 		make func(jpath.FilterFunc, jpath.FilterFunc) jpath.FilterFunc
 	}{
-		{jpath.OpEq, jpath.Eq}, {jpath.OpNe, jpath.Ne},
-		{jpath.OpLt, jpath.Lt}, {jpath.OpLte, jpath.Le},
-		{jpath.OpGt, jpath.Gt}, {jpath.OpGte, jpath.Ge},
+		{name: jpath.OpEq, make: jpath.Eq},
+		{name: jpath.OpNe, make: jpath.Ne},
+		{name: jpath.OpLt, make: jpath.Lt},
+		{name: jpath.OpLte, make: jpath.Le},
+		{name: jpath.OpGt, make: jpath.Gt},
+		{name: jpath.OpGte, make: jpath.Ge},
 	} {
 		query := "$[?@.a " + op.name + " @.b]"
 		reference := jpath.ComposePath(
 			jpath.ChildSegment(jpath.SelectFilter(op.make(left, right))),
 		)
-		got, want := reg.MustQuery(query, doc), reference(doc)
+		got := reg.MustQuery(query, doc)
+		want := reference(doc)
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("%s: optimized and public evaluators differ", query)
 		}
@@ -57,20 +58,20 @@ func TestPredicateComparisons(t *testing.T) {
 
 func TestPredicatePreservesSharedFunctionResults(t *testing.T) {
 	reg := jpath.NewRegistry()
-	shared := &jpath.Value{}
+	shared := jpath.Nodes{nil}
 	var calls []string
 	reg.MustRegisterDefinition("left", &jpath.FunctionDefinition{
-		Eval: func([]*jpath.Value) *jpath.Value {
+		Eval: func([]any) any {
 			calls = append(calls, "left")
-			shared.Scalar = 1
+			shared[0] = 1
 			return shared
 		},
 	})
 	reg.MustRegisterDefinition("right", &jpath.FunctionDefinition{
-		Eval: func([]*jpath.Value) *jpath.Value {
+		Eval: func([]any) any {
 			calls = append(calls, "right")
-			shared.Scalar = 2
-			return jpath.ScalarValue(2)
+			shared[0] = 2
+			return 2
 		},
 	})
 	got := reg.MustQuery("$[?left() == right()]", []any{nil})
@@ -82,12 +83,10 @@ func TestPredicatePreservesSharedFunctionResults(t *testing.T) {
 func TestPredicateArgumentsRemainIndependentBooleans(t *testing.T) {
 	reg := jpath.NewRegistry()
 	reg.MustRegisterDefinition("check", &jpath.FunctionDefinition{
-		Eval: func(args []*jpath.Value) *jpath.Value {
-			valid := len(args) == 2 && !args[0].IsNodes && !args[1].IsNodes
-			valid = valid && args[0].Scalar == true && args[1].Scalar == true
-			args[0].Scalar = false
-			valid = valid && args[1].Scalar == true
-			return jpath.ScalarValue(valid)
+		Eval: func(args []any) any {
+			valid := len(args) == 2 && args[0] == true && args[1] == true
+			args[0] = false
+			return valid && args[1] == true
 		},
 	})
 	query := "$[?check(!@.missing, @.a == null && !!@.a)]"

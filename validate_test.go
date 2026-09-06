@@ -12,8 +12,8 @@ import (
 func TestFunctionValidationPaths(t *testing.T) {
 	reg := jpath.NewRegistry()
 	reg.MustRegisterDefinition("novalidate", &jpath.FunctionDefinition{
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{Scalar: true}
+		Eval: func(_ []any) any {
+			return true
 		},
 	})
 
@@ -39,8 +39,8 @@ func TestFunctionValidatorError(t *testing.T) {
 			}
 			return nil
 		},
-		Eval: func(_ []*jpath.Value) *jpath.Value {
-			return &jpath.Value{Scalar: true}
+		Eval: func(_ []any) any {
+			return true
 		},
 	})
 

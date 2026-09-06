@@ -61,10 +61,10 @@ func TestComposedFilterUsesContext(t *testing.T) {
 	}
 	items := doc["items"].([]any)
 
-	filter := func(ctx *jpath.FilterCtx) *jpath.Value {
+	filter := func(ctx *jpath.FilterCtx) any {
 		root := ctx.Root.(map[string]any)
 		current := ctx.Current.(map[string]any)
-		return jpath.ScalarValue(root["kind"] == current["kind"])
+		return root["kind"] == current["kind"]
 	}
 	path := jpath.ComposePath(
 		jpath.ChildSegment(jpath.SelectName("items")),
@@ -86,18 +86,19 @@ func TestComposedFilterCall(t *testing.T) {
 	reg := jpath.NewRegistry()
 	tagPath := reg.MustCompile(reg.MustParse("$.tag"))
 	filter := jpath.Call(
-		func(args []*jpath.Value) *jpath.Value {
-			if len(args) != 1 || !args[0].IsNodes {
-				return &jpath.Value{Scalar: false}
+		func(args []any) any {
+			if len(args) != 1 {
+				return false
 			}
-			if len(args[0].Nodes) != 1 {
-				return &jpath.Value{Scalar: false}
+			nodes, ok := args[0].(jpath.Nodes)
+			if !ok || len(nodes) != 1 {
+				return false
 			}
-			tag, ok := args[0].Nodes[0].(string)
+			tag, ok := nodes[0].(string)
 			if !ok {
-				return &jpath.Value{Scalar: false}
+				return false
 			}
-			return &jpath.Value{Scalar: tag == "keep"}
+			return tag == "keep"
 		},
 		jpath.PathCurrent(tagPath),
 	)

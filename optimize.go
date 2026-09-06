@@ -3,7 +3,7 @@ package jpath
 import "reflect"
 
 func makeSingularPath(path *PathExpr) Path {
-	lookup := makeSingularLookup(path)
+	lookup := makeSingularLookup(path.Segments)
 	return func(node any) []any {
 		value, ok := lookup(node)
 		if !ok {
@@ -13,10 +13,23 @@ func makeSingularPath(path *PathExpr) Path {
 	}
 }
 
-func makeSingularLookup(path *PathExpr) func(any) (any, bool) {
-	// Copy selectors so later AST edits do not change the compiled path.
-	selectors := make([]SelectorExpr, len(path.Segments))
-	for i, seg := range path.Segments {
+func makeSingularSegment(segments []*SegmentExpr) SegmentFunc {
+	lookup := makeSingularLookup(segments)
+	return func(in []any, _ any) []any {
+		out := make([]any, 0, len(in))
+		for _, node := range in {
+			if value, ok := lookup(node); ok {
+				out = append(out, value)
+			}
+		}
+		return out
+	}
+}
+
+func makeSingularLookup(segments []*SegmentExpr) func(any) (any, bool) {
+	// Copy selectors so later AST edits do not change the compiled path
+	selectors := make([]SelectorExpr, len(segments))
+	for i, seg := range segments {
 		selectors[i] = *seg.Selectors[0]
 	}
 	return func(node any) (any, bool) {
@@ -75,7 +88,7 @@ func logicalArgs(args []FilterExpr, expr FilterExpr, op string) []FilterExpr {
 	if !ok || b.Op != op {
 		return append(args, expr)
 	}
-	// Factor each subtree before flattening can erase its grouping.
+	// Factor each subtree before flattening can erase its grouping
 	if factored := factorLogical(b); factored != b {
 		return append(args, factored)
 	}
@@ -100,15 +113,14 @@ func factorLogical(expr *BinaryExpr) *BinaryExpr {
 		return expr
 	}
 	// A branch can mutate data read by the repeated factor. Exclude all
-	// function calls, including calls inside nested path filters.
+	// function calls, including calls inside nested path filters
 	if !functionFree(expr) {
 		return expr
 	}
 	return &BinaryExpr{
-		Op: inner, Left: left.Left,
-		Right: &BinaryExpr{
-			Op: expr.Op, Left: left.Right, Right: right.Right,
-		},
+		Op:    inner,
+		Left:  left.Left,
+		Right: &BinaryExpr{Op: expr.Op, Left: left.Right, Right: right.Right},
 	}
 }
 
@@ -119,10 +131,8 @@ func functionFree(expr FilterExpr) bool {
 
 	case *PathValueExpr:
 		for _, seg := range v.Path.Segments {
-			for _, selector := range seg.Selectors {
-				if selector.Filter != nil && !functionFree(selector.Filter) {
-					return false
-				}
+			if !segmentFunctionFree(seg) {
+				return false
 			}
 		}
 		return true
@@ -136,4 +146,13 @@ func functionFree(expr FilterExpr) bool {
 	default:
 		return false
 	}
+}
+
+func segmentFunctionFree(seg *SegmentExpr) bool {
+	for _, selector := range seg.Selectors {
+		if selector.Filter != nil && !functionFree(selector.Filter) {
+			return false
+		}
+	}
+	return true
 }

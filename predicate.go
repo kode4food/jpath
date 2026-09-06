@@ -55,7 +55,7 @@ func compilePredicate(expr FilterExpr, reg *Registry) (predicateFunc, error) {
 }
 
 func makeContextLookup(expr *PathValueExpr) func(*FilterCtx) (any, bool) {
-	lookup := makeSingularLookup(expr.Path)
+	lookup := makeSingularLookup(expr.Path.Segments)
 	absolute := expr.Absolute
 	return func(ctx *FilterCtx) (any, bool) {
 		node := ctx.Current
@@ -68,87 +68,31 @@ func makeContextLookup(expr *PathValueExpr) func(*FilterCtx) (any, bool) {
 
 func compileComparison(expr *BinaryExpr, reg *Registry) (predicateFunc, error) {
 	op := expr.Op
-	left, right := scalarOperand(expr.Left), scalarOperand(expr.Right)
-	if left != nil && right != nil {
-		return func(ctx *FilterCtx) bool {
-			lv, rv := left(ctx), right(ctx)
-			return compareValues(op, &lv, &rv)
-		}, nil
-	}
-	if literal, ok := expr.Left.(*LiteralExpr); ok {
-		right, err := compileFilter(expr.Right, reg)
-		if err != nil {
-			return nil, err
-		}
-		value := ScalarValue(literal.Value)
-		return func(ctx *FilterCtx) bool {
-			return compareValues(op, value, right(ctx))
-		}, nil
-	}
-	leftFilter, err := compileFilter(expr.Left, reg)
+	left, err := compileOperand(expr.Left, reg)
 	if err != nil {
 		return nil, err
 	}
-	if literal, ok := expr.Right.(*LiteralExpr); ok {
-		value := ScalarValue(literal.Value)
-		return func(ctx *FilterCtx) bool {
-			return compareValues(op, leftFilter(ctx), value)
-		}, nil
-	}
-	rightFilter, err := compileFilter(expr.Right, reg)
+	right, err := compileOperand(expr.Right, reg)
 	if err != nil {
 		return nil, err
 	}
 	return func(ctx *FilterCtx) bool {
-		return compareValues(op, leftFilter(ctx), rightFilter(ctx))
+		return compareValues(op, comparison{left: left(ctx), right: right(ctx)})
 	}, nil
 }
 
-func scalarOperand(expr FilterExpr) func(*FilterCtx) Value {
+func compileOperand(expr FilterExpr, reg *Registry) (FilterFunc, error) {
 	switch v := expr.(type) {
-	case *LiteralExpr:
-		value := v.Value
-		return func(_ *FilterCtx) Value {
-			return Value{Scalar: value}
-		}
-
 	case *PathValueExpr:
-		if !isSingularPath(v.Path) {
-			return nil
+		if isSingularPath(v.Path) {
+			lookup := makeContextLookup(v)
+			return func(ctx *FilterCtx) any {
+				if value, ok := lookup(ctx); ok {
+					return value
+				}
+				return Nodes(nil)
+			}, nil
 		}
-		lookup := makeContextLookup(v)
-		return func(ctx *FilterCtx) Value {
-			value, ok := lookup(ctx)
-			// An absent node stays an empty node list, distinct from null.
-			return Value{Scalar: value, IsNodes: !ok}
-		}
-
-	default:
-		return nil
 	}
-}
-
-func compareValues(op string, left, right *Value) bool {
-	switch op {
-	case OpEq:
-		return compareValuesEq(left, right)
-
-	case OpNe:
-		return compareValuesNe(left, right)
-
-	case OpLt:
-		return compareValuesLt(left, right)
-
-	case OpLte:
-		return compareValuesLe(left, right)
-
-	case OpGt:
-		return compareValuesGt(left, right)
-
-	case OpGte:
-		return compareValuesGe(left, right)
-
-	default:
-		return false
-	}
+	return compileFilter(expr, reg)
 }

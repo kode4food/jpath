@@ -162,15 +162,19 @@ func functionUse(ctx exprContext) FunctionUse {
 
 func isSingularPath(path *PathExpr) bool {
 	for _, seg := range path.Segments {
-		if seg.Descendant || len(seg.Selectors) != 1 {
-			return false
-		}
-		sl := seg.Selectors[0]
-		if sl.Kind != SelectorName && sl.Kind != SelectorIndex {
+		if !isSingularSegment(seg) {
 			return false
 		}
 	}
 	return true
+}
+
+func isSingularSegment(seg *SegmentExpr) bool {
+	if seg.Descendant || len(seg.Selectors) != 1 {
+		return false
+	}
+	kind := seg.Selectors[0].Kind
+	return kind == SelectorName || kind == SelectorIndex
 }
 
 func validateMatchSearchFunction(
