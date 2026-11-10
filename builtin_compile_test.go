@@ -18,23 +18,9 @@ func TestLiteralRegexPreparation(t *testing.T) {
 		match   bool
 		search  bool
 	}{
-		{
-			name:    "unicode",
-			text:    "a😀b",
-			pattern: "a.b",
-			match:   true,
-			search:  true,
-		},
-		{
-			name:    "cr",
-			text:    "a\rb",
-			pattern: "a.b",
-		},
-		{
-			name:    "lf",
-			text:    "a\nb",
-			pattern: "a.b",
-		},
+		{name: "unicode", text: "a😀b", pattern: "a.b", match: true, search: true},
+		{name: "cr", text: "a\rb", pattern: "a.b"},
+		{name: "lf", text: "a\nb", pattern: "a.b"},
 		{
 			name:    "escaped",
 			text:    "a.b",
@@ -42,29 +28,12 @@ func TestLiteralRegexPreparation(t *testing.T) {
 			match:   true,
 			search:  true,
 		},
-		{
-			name:    "class",
-			text:    "a.b",
-			pattern: "a[.]b",
-			match:   true,
-			search:  true,
-		},
-		{
-			name:    "partial",
-			text:    "xabx",
-			pattern: "ab",
-			search:  true,
-		},
-		{
-			name:    "invalid",
-			text:    "ab",
-			pattern: "[",
-		},
+		{name: "class", text: "a.b", pattern: "a[.]b", match: true, search: true},
+		{name: "partial", text: "xabx", pattern: "ab", search: true},
+		{name: "invalid", text: "ab", pattern: "["},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := []any{map[string]any{
-				"text": tc.text, "pattern": tc.pattern,
-			}}
+			doc := []any{map[string]any{"text": tc.text, "pattern": tc.pattern}}
 			for _, name := range []string{"match", "search"} {
 				want := tc.match
 				if name == "search" {
@@ -108,38 +77,14 @@ func BenchmarkBuiltinEvaluation(b *testing.B) {
 		name  string
 		query string
 	}{
-		{
-			name:  "length",
-			query: "$[?length(@.name) == 5]",
-		},
-		{
-			name:  "count-singular",
-			query: "$[?count(@.name) == 1]",
-		},
-		{
-			name:  "count-many",
-			query: "$[?count(@.items[*]) == 2]",
-		},
-		{
-			name:  "value",
-			query: "$[?value(@.name) == 'alpha']",
-		},
-		{
-			name:  "match",
-			query: "$[?match(@.name, 'a.*')]",
-		},
-		{
-			name:  "search-literal",
-			query: "$[?search(@.name, 'a.*')]",
-		},
-		{
-			name:  "search",
-			query: "$[?search(@.name, @.pattern)]",
-		},
-		{
-			name:  "nested",
-			query: "$[?length(value(@.name)) == 5]",
-		},
+		{name: "length", query: "$[?length(@.name) == 5]"},
+		{name: "count-singular", query: "$[?count(@.name) == 1]"},
+		{name: "count-many", query: "$[?count(@.items[*]) == 2]"},
+		{name: "value", query: "$[?value(@.name) == 'alpha']"},
+		{name: "match", query: "$[?match(@.name, 'a.*')]"},
+		{name: "search-literal", query: "$[?search(@.name, 'a.*')]"},
+		{name: "search", query: "$[?search(@.name, @.pattern)]"},
+		{name: "nested", query: "$[?length(value(@.name)) == 5]"},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
 			path := reg.MustCompile(reg.MustParse(tc.query))

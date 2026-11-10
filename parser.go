@@ -134,10 +134,7 @@ func (p *Parser) parseDescendantSelectors() ([]*SelectorExpr, error) {
 		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	return []*SelectorExpr{
-		{
-			Kind: SelectorName,
-			Name: nm,
-		},
+		{Kind: SelectorName, Name: nm},
 	}, nil
 }
 
@@ -755,10 +752,7 @@ func topLevelFilterPath(filter FilterExpr) *PathExpr {
 		Segments: []*SegmentExpr{
 			{
 				Selectors: []*SelectorExpr{
-					{
-						Kind:   SelectorFilter,
-						Filter: filter,
-					},
+					{Kind: SelectorFilter, Filter: filter},
 				},
 			},
 		},

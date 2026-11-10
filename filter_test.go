@@ -32,10 +32,7 @@ func TestComposedFilterPathCurrent(t *testing.T) {
 func TestComposedFilterPathRoot(t *testing.T) {
 	doc := map[string]any{
 		"limit": float64(4),
-		"items": []any{
-			map[string]any{"price": float64(1)},
-			map[string]any{"price": float64(5)},
-		},
+		"items": []any{map[string]any{"price": float64(1)}, map[string]any{"price": float64(5)}},
 	}
 	items := doc["items"].([]any)
 
@@ -53,11 +50,8 @@ func TestComposedFilterPathRoot(t *testing.T) {
 
 func TestComposedFilterUsesContext(t *testing.T) {
 	doc := map[string]any{
-		"kind": "book",
-		"items": []any{
-			map[string]any{"kind": "book"},
-			map[string]any{"kind": "video"},
-		},
+		"kind":  "book",
+		"items": []any{map[string]any{"kind": "book"}, map[string]any{"kind": "video"}},
 	}
 	items := doc["items"].([]any)
 
@@ -76,10 +70,7 @@ func TestComposedFilterUsesContext(t *testing.T) {
 
 func TestComposedFilterCall(t *testing.T) {
 	doc := map[string]any{
-		"items": []any{
-			map[string]any{"tag": "keep"},
-			map[string]any{"tag": "drop"},
-		},
+		"items": []any{map[string]any{"tag": "keep"}, map[string]any{"tag": "drop"}},
 	}
 	items := doc["items"].([]any)
 
@@ -112,10 +103,7 @@ func TestComposedFilterCall(t *testing.T) {
 
 func TestComposedFilterWrappedFunction(t *testing.T) {
 	doc := map[string]any{
-		"items": []any{
-			map[string]any{"tag": "keep"},
-			map[string]any{"tag": "drop"},
-		},
+		"items": []any{map[string]any{"tag": "keep"}, map[string]any{"tag": "drop"}},
 	}
 	items := doc["items"].([]any)
 

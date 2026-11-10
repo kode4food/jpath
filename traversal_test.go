@@ -60,18 +60,9 @@ func BenchmarkTraversal(b *testing.B) {
 		name  string
 		query string
 	}{
-		{
-			name:  "singular-runs",
-			query: "$.store.books[*].author.name",
-		},
-		{
-			name:  "descendant-name",
-			query: "$..name",
-		},
-		{
-			name:  "descendant-wildcard",
-			query: "$..*",
-		},
+		{name: "singular-runs", query: "$.store.books[*].author.name"},
+		{name: "descendant-name", query: "$..name"},
+		{name: "descendant-wildcard", query: "$..*"},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
 			path := reg.MustCompile(reg.MustParse(tc.query))

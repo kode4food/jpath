@@ -68,9 +68,7 @@ func TestTopLevelFilterShorthand(t *testing.T) {
 	assert.Equal(t, explicitAST, shorthandAST)
 
 	docMatch := map[string]any{
-		"product_info": map[string]any{
-			"name": "Professional Laptop",
-		},
+		"product_info": map[string]any{"name": "Professional Laptop"},
 	}
 	gotExplicit, err := jpath.Query(explicit, docMatch)
 	if !assert.NoError(t, err) {
@@ -83,9 +81,7 @@ func TestTopLevelFilterShorthand(t *testing.T) {
 	assert.Equal(t, gotExplicit, gotShorthand)
 
 	docNoMatch := map[string]any{
-		"product_info": map[string]any{
-			"name": "Budget Laptop",
-		},
+		"product_info": map[string]any{"name": "Budget Laptop"},
 	}
 	gotExplicit, err = jpath.Query(explicit, docNoMatch)
 	if !assert.NoError(t, err) {

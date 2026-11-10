@@ -33,30 +33,12 @@ func TestPredicateComparisons(t *testing.T) {
 		name string
 		make func(jpath.FilterFunc, jpath.FilterFunc) jpath.FilterFunc
 	}{
-		{
-			name: jpath.OpEq,
-			make: jpath.Eq,
-		},
-		{
-			name: jpath.OpNe,
-			make: jpath.Ne,
-		},
-		{
-			name: jpath.OpLt,
-			make: jpath.Lt,
-		},
-		{
-			name: jpath.OpLte,
-			make: jpath.Le,
-		},
-		{
-			name: jpath.OpGt,
-			make: jpath.Gt,
-		},
-		{
-			name: jpath.OpGte,
-			make: jpath.Ge,
-		},
+		{name: jpath.OpEq, make: jpath.Eq},
+		{name: jpath.OpNe, make: jpath.Ne},
+		{name: jpath.OpLt, make: jpath.Lt},
+		{name: jpath.OpLte, make: jpath.Le},
+		{name: jpath.OpGt, make: jpath.Gt},
+		{name: jpath.OpGte, make: jpath.Ge},
 	} {
 		query := "$[?@.a " + op.name + " @.b]"
 		reference := jpath.ComposePath(jpath.ChildSegment(jpath.SelectFilter(op.make(left, right))))

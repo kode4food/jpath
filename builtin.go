@@ -55,26 +55,11 @@ func (r *regexMatcher) compile(pattern string) (*regexp.Regexp, error) {
 
 func defaultFunctions(matcher *regexMatcher) map[string]*FunctionDefinition {
 	return map[string]*FunctionDefinition{
-		"length": {
-			Validate: validateLengthFunction,
-			Eval:     evalLength,
-		},
-		"count": {
-			Validate: validateCountFunction,
-			Eval:     evalCount,
-		},
-		"value": {
-			Validate: validateValueFunction,
-			Eval:     evalValueFunc,
-		},
-		"match": {
-			Validate: validateMatchSearchFunction,
-			Eval:     matcher.fullMatch,
-		},
-		"search": {
-			Validate: validateMatchSearchFunction,
-			Eval:     matcher.partialMatch,
-		},
+		"length": {Validate: validateLengthFunction, Eval: evalLength},
+		"count":  {Validate: validateCountFunction, Eval: evalCount},
+		"value":  {Validate: validateValueFunction, Eval: evalValueFunc},
+		"match":  {Validate: validateMatchSearchFunction, Eval: matcher.fullMatch},
+		"search": {Validate: validateMatchSearchFunction, Eval: matcher.partialMatch},
 	}
 }
 

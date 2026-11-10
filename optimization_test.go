@@ -247,11 +247,7 @@ func TestSingularPathOptimization(t *testing.T) {
 		{"$[-1]", []any{1, nil}, []any{nil}},
 		{"$[-3]", []any{1, 2}, []any{}},
 		{"$[2]", []any{1, 2}, []any{}},
-		{
-			"$.a[-1].b",
-			map[string]any{"a": []any{map[string]any{"b": 3}}},
-			[]any{3},
-		},
+		{"$.a[-1].b", map[string]any{"a": []any{map[string]any{"b": 3}}}, []any{3}},
 	} {
 		got := reg.MustQuery(tc.query, tc.doc)
 		if !reflect.DeepEqual(got, tc.want) {

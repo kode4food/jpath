@@ -34,14 +34,8 @@ func TestFilterPathValues(t *testing.T) {
 
 func TestFilterBuiltinFunctions(t *testing.T) {
 	doc := []any{
-		map[string]any{
-			"name": "abcd",
-			"vals": []any{float64(1), float64(2)},
-		},
-		map[string]any{
-			"name": "xy",
-			"vals": []any{float64(9)},
-		},
+		map[string]any{"name": "abcd", "vals": []any{float64(1), float64(2)}},
+		map[string]any{"name": "xy", "vals": []any{float64(9)}},
 	}
 
 	reg := jpath.NewRegistry()
@@ -102,10 +96,7 @@ func TestFilterCompareOperators(t *testing.T) {
 
 func TestFilterMatchSearchEdgeCases(t *testing.T) {
 	doc := []any{
-		map[string]any{
-			"left":  []any{"aa", "bb"},
-			"right": []any{"xx", "yy"},
-		},
+		map[string]any{"left": []any{"aa", "bb"}, "right": []any{"xx", "yy"}},
 	}
 	reg := jpath.NewRegistry()
 
