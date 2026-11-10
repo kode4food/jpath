@@ -10,7 +10,10 @@ import (
 
 func TestFilterPathValues(t *testing.T) {
 	doc := map[string]any{
-		"x": []any{float64(10), float64(20)},
+		"x": []any{
+			float64(10),
+			float64(20),
+		},
 		"items": []any{
 			map[string]any{"x": []any{float64(1), float64(2)}},
 			map[string]any{"x": []any{float64(3), float64(4)}},

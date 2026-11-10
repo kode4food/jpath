@@ -177,14 +177,38 @@ func TestConstantFilterOptimization(t *testing.T) {
 		text string
 		want []any
 	}{
-		{"$[?$.n == 1]", all},
-		{"$[?$.n == 2]", []any{}},
-		{`$[?$.tags[?@ == "a"]]`, all},
-		{`$[?$.tags[?@ == "z"]]`, []any{}},
-		{`$[?$.n == 1 && $.tags[?@ == "b"]]`, all},
-		{`$.tags[?@ == "a"]`, []any{"a"}},
-		{"$.tags[?$.n == 1]", []any{"a", "b"}},
-		{"$.n[?$.n == 1]", []any{}},
+		{
+			"$[?$.n == 1]",
+			all,
+		},
+		{
+			"$[?$.n == 2]",
+			[]any{},
+		},
+		{
+			`$[?$.tags[?@ == "a"]]`,
+			all,
+		},
+		{
+			`$[?$.tags[?@ == "z"]]`,
+			[]any{},
+		},
+		{
+			`$[?$.n == 1 && $.tags[?@ == "b"]]`,
+			all,
+		},
+		{
+			`$.tags[?@ == "a"]`,
+			[]any{"a"},
+		},
+		{
+			"$.tags[?$.n == 1]",
+			[]any{"a", "b"},
+		},
+		{
+			"$.n[?$.n == 1]",
+			[]any{},
+		},
 	} {
 		got := reg.MustQuery(query.text, doc)
 		if !reflect.DeepEqual(got, query.want) {
@@ -296,7 +320,19 @@ func TestLiteralComparisonOptimization(t *testing.T) {
 			text  string
 			value any
 		}{
-			{"null", nil}, {"2", float64(2)}, {`"x"`, "x"}, {"true", true},
+			{
+				"null",
+				nil,
+			}, {
+				"2",
+				float64(2),
+			}, {
+				`"x"`,
+				"x",
+			}, {
+				"true",
+				true,
+			},
 		} {
 			for _, left := range []bool{false, true} {
 				query := "$[?@.x " + op.name + " " + literal.text + "]"
