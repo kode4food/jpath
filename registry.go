@@ -74,9 +74,7 @@ func (r *Registry) Clone() *Registry {
 }
 
 // RegisterDefinition registers a named function definition in this registry
-func (r *Registry) RegisterDefinition(
-	name string, def *FunctionDefinition,
-) error {
+func (r *Registry) RegisterDefinition(name string, def *FunctionDefinition) error {
 	if !isValidFunctionName(name) {
 		return fmt.Errorf("%w: %s", ErrBadFuncName, name)
 	}
@@ -112,9 +110,7 @@ func (r *Registry) RegisterFunction(name string, arity int, fn Function) error {
 }
 
 // MustRegisterFunction registers a scalar function or panics
-func (r *Registry) MustRegisterFunction(
-	name string, arity int, fn Function,
-) *Registry {
+func (r *Registry) MustRegisterFunction(name string, arity int, fn Function) *Registry {
 	if err := r.RegisterFunction(name, arity, fn); err != nil {
 		panic(err)
 	}
@@ -122,9 +118,7 @@ func (r *Registry) MustRegisterFunction(
 }
 
 // MustRegisterDefinition registers a function definition or panics
-func (r *Registry) MustRegisterDefinition(
-	name string, def *FunctionDefinition,
-) *Registry {
+func (r *Registry) MustRegisterDefinition(name string, def *FunctionDefinition) *Registry {
 	if err := r.RegisterDefinition(name, def); err != nil {
 		panic(err)
 	}

@@ -134,7 +134,10 @@ func (p *Parser) parseDescendantSelectors() ([]*SelectorExpr, error) {
 		return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
 	}
 	return []*SelectorExpr{
-		{Kind: SelectorName, Name: nm},
+		{
+			Kind: SelectorName,
+			Name: nm,
+		},
 	}, nil
 }
 
@@ -198,14 +201,20 @@ func (p *Parser) parseBracketSelector() (*SelectorExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &SelectorExpr{Kind: SelectorFilter, Filter: fl}, nil
+		return &SelectorExpr{
+			Kind:   SelectorFilter,
+			Filter: fl,
+		}, nil
 
 	case '\'', '"':
 		s, err := p.parseString()
 		if err != nil {
 			return nil, err
 		}
-		return &SelectorExpr{Kind: SelectorName, Name: s}, nil
+		return &SelectorExpr{
+			Kind: SelectorName,
+			Name: s,
+		}, nil
 
 	default:
 		return p.parseIndexOrSlice()
@@ -230,7 +239,10 @@ func (p *Parser) parseIndexOrSlice() (*SelectorExpr, error) {
 		if !hasStart {
 			return nil, wrapPathError(p.text, startPos, ErrBadSlice)
 		}
-		return &SelectorExpr{Kind: SelectorIndex, Index: start}, nil
+		return &SelectorExpr{
+			Kind:  SelectorIndex,
+			Index: start,
+		}, nil
 	}
 	p.pos++
 	p.skipWS()
@@ -290,7 +302,11 @@ func (p *Parser) parseOr() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &BinaryExpr{Op: OpOr, Left: left, Right: right}
+		left = &BinaryExpr{
+			Op:    OpOr,
+			Left:  left,
+			Right: right,
+		}
 	}
 }
 
@@ -308,7 +324,11 @@ func (p *Parser) parseAnd() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &BinaryExpr{Op: OpAnd, Left: left, Right: right}
+		left = &BinaryExpr{
+			Op:    OpAnd,
+			Left:  left,
+			Right: right,
+		}
 	}
 }
 
@@ -346,7 +366,11 @@ func (p *Parser) parseCompare() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &BinaryExpr{Op: op, Left: left, Right: right}
+		left = &BinaryExpr{
+			Op:    op,
+			Left:  left,
+			Right: right,
+		}
 	}
 }
 
@@ -357,7 +381,10 @@ func (p *Parser) parseUnary() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &UnaryExpr{Op: OpNot, Expr: ex}, nil
+		return &UnaryExpr{
+			Op:   OpNot,
+			Expr: ex,
+		}, nil
 	}
 	return p.parsePrimary()
 }
@@ -393,7 +420,10 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &PathValueExpr{Absolute: true, Path: path}, nil
+		return &PathValueExpr{
+			Absolute: true,
+			Path:     path,
+		}, nil
 
 	case '@':
 		p.pos++
@@ -401,7 +431,10 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &PathValueExpr{Absolute: false, Path: path}, nil
+		return &PathValueExpr{
+			Absolute: false,
+			Path:     path,
+		}, nil
 
 	default:
 		if isNumberStart(p.peek()) {
@@ -428,7 +461,10 @@ func (p *Parser) parsePrimary() (FilterExpr, error) {
 			if err != nil {
 				return nil, err
 			}
-			return &FuncExpr{Name: ident, Args: args}, nil
+			return &FuncExpr{
+				Name: ident,
+				Args: args,
+			}, nil
 		}
 	}
 	return nil, wrapPathError(p.text, p.pos, ErrUnexpectedToken)
@@ -774,7 +810,5 @@ func isNamePart(r rune) bool {
 }
 
 func wrapPathError(query string, pos int, err error) error {
-	return fmt.Errorf(
-		"%w at offset %d in %q: %w", ErrInvalidPath, pos, query, err,
-	)
+	return fmt.Errorf("%w at offset %d in %q: %w", ErrInvalidPath, pos, query, err)
 }

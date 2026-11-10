@@ -25,8 +25,16 @@ func TestLiteralRegexPreparation(t *testing.T) {
 			match:   true,
 			search:  true,
 		},
-		{name: "cr", text: "a\rb", pattern: "a.b"},
-		{name: "lf", text: "a\nb", pattern: "a.b"},
+		{
+			name:    "cr",
+			text:    "a\rb",
+			pattern: "a.b",
+		},
+		{
+			name:    "lf",
+			text:    "a\nb",
+			pattern: "a.b",
+		},
 		{
 			name:    "escaped",
 			text:    "a.b",
@@ -41,8 +49,17 @@ func TestLiteralRegexPreparation(t *testing.T) {
 			match:   true,
 			search:  true,
 		},
-		{name: "partial", text: "xabx", pattern: "ab", search: true},
-		{name: "invalid", text: "ab", pattern: "["},
+		{
+			name:    "partial",
+			text:    "xabx",
+			pattern: "ab",
+			search:  true,
+		},
+		{
+			name:    "invalid",
+			text:    "ab",
+			pattern: "[",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			doc := []any{map[string]any{
@@ -60,9 +77,7 @@ func TestLiteralRegexPreparation(t *testing.T) {
 				call := ast.Segments[0].Selectors[0].Filter.(*jpath.FuncExpr)
 				call.Args[1].(*jpath.LiteralExpr).Value = "changed"
 				assert.Equal(t, want, len(path(doc)) == 1)
-				assert.Equal(t,
-					path(doc), reg.MustQuery(prefix+"@.pattern)]", doc),
-				)
+				assert.Equal(t, path(doc), reg.MustQuery(prefix+"@.pattern)]", doc))
 			}
 		})
 	}
@@ -93,14 +108,38 @@ func BenchmarkBuiltinEvaluation(b *testing.B) {
 		name  string
 		query string
 	}{
-		{name: "length", query: "$[?length(@.name) == 5]"},
-		{name: "count-singular", query: "$[?count(@.name) == 1]"},
-		{name: "count-many", query: "$[?count(@.items[*]) == 2]"},
-		{name: "value", query: "$[?value(@.name) == 'alpha']"},
-		{name: "match", query: "$[?match(@.name, 'a.*')]"},
-		{name: "search-literal", query: "$[?search(@.name, 'a.*')]"},
-		{name: "search", query: "$[?search(@.name, @.pattern)]"},
-		{name: "nested", query: "$[?length(value(@.name)) == 5]"},
+		{
+			name:  "length",
+			query: "$[?length(@.name) == 5]",
+		},
+		{
+			name:  "count-singular",
+			query: "$[?count(@.name) == 1]",
+		},
+		{
+			name:  "count-many",
+			query: "$[?count(@.items[*]) == 2]",
+		},
+		{
+			name:  "value",
+			query: "$[?value(@.name) == 'alpha']",
+		},
+		{
+			name:  "match",
+			query: "$[?match(@.name, 'a.*')]",
+		},
+		{
+			name:  "search-literal",
+			query: "$[?search(@.name, 'a.*')]",
+		},
+		{
+			name:  "search",
+			query: "$[?search(@.name, @.pattern)]",
+		},
+		{
+			name:  "nested",
+			query: "$[?length(value(@.name)) == 5]",
+		},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
 			path := reg.MustCompile(reg.MustParse(tc.query))

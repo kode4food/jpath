@@ -27,27 +27,39 @@ func TestPredicateComparisons(t *testing.T) {
 			doc = append(doc, node)
 		}
 	}
-	left := jpath.PathCurrent(
-		jpath.ComposePath(jpath.ChildSegment(jpath.SelectName("a"))),
-	)
-	right := jpath.PathCurrent(
-		jpath.ComposePath(jpath.ChildSegment(jpath.SelectName("b"))),
-	)
+	left := jpath.PathCurrent(jpath.ComposePath(jpath.ChildSegment(jpath.SelectName("a"))))
+	right := jpath.PathCurrent(jpath.ComposePath(jpath.ChildSegment(jpath.SelectName("b"))))
 	for _, op := range []struct {
 		name string
 		make func(jpath.FilterFunc, jpath.FilterFunc) jpath.FilterFunc
 	}{
-		{name: jpath.OpEq, make: jpath.Eq},
-		{name: jpath.OpNe, make: jpath.Ne},
-		{name: jpath.OpLt, make: jpath.Lt},
-		{name: jpath.OpLte, make: jpath.Le},
-		{name: jpath.OpGt, make: jpath.Gt},
-		{name: jpath.OpGte, make: jpath.Ge},
+		{
+			name: jpath.OpEq,
+			make: jpath.Eq,
+		},
+		{
+			name: jpath.OpNe,
+			make: jpath.Ne,
+		},
+		{
+			name: jpath.OpLt,
+			make: jpath.Lt,
+		},
+		{
+			name: jpath.OpLte,
+			make: jpath.Le,
+		},
+		{
+			name: jpath.OpGt,
+			make: jpath.Gt,
+		},
+		{
+			name: jpath.OpGte,
+			make: jpath.Ge,
+		},
 	} {
 		query := "$[?@.a " + op.name + " @.b]"
-		reference := jpath.ComposePath(
-			jpath.ChildSegment(jpath.SelectFilter(op.make(left, right))),
-		)
+		reference := jpath.ComposePath(jpath.ChildSegment(jpath.SelectFilter(op.make(left, right))))
 		got := reg.MustQuery(query, doc)
 		want := reference(doc)
 		if !reflect.DeepEqual(got, want) {

@@ -29,9 +29,7 @@ func TestNewCompiler(t *testing.T) {
 }
 
 func TestCompileSelectors(t *testing.T) {
-	ctsPath := filepath.Join(
-		"testdata", "jsonpath-compliance-test-suite", "cts.json",
-	)
+	ctsPath := filepath.Join("testdata", "jsonpath-compliance-test-suite", "cts.json")
 	buf, err := os.ReadFile(ctsPath)
 	if err != nil {
 		t.Fatalf("compliance suite unavailable at %s: %v", ctsPath, err)

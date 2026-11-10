@@ -78,21 +78,15 @@ func defaultFunctions(matcher *regexMatcher) map[string]*FunctionDefinition {
 	}
 }
 
-func validateLengthFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
+func validateLengthFunction(args []FilterExpr, use FunctionUse, inComparison bool) error {
 	return validateUnaryComparedSingular("length", args, use, inComparison)
 }
 
-func validateCountFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
+func validateCountFunction(args []FilterExpr, use FunctionUse, inComparison bool) error {
 	return validateUnaryComparedReq("count", args, use, inComparison)
 }
 
-func validateValueFunction(
-	args []FilterExpr, use FunctionUse, inComparison bool,
-) error {
+func validateValueFunction(args []FilterExpr, use FunctionUse, inComparison bool) error {
 	return validateUnaryComparedReq("value", args, use, inComparison)
 }
 
@@ -151,5 +145,8 @@ func evalMatchArguments(args []any) (regexInput, bool) {
 	if !ok {
 		return regexInput{}, false
 	}
-	return regexInput{text: left, pattern: pattern}, true
+	return regexInput{
+		text:    left,
+		pattern: pattern,
+	}, true
 }

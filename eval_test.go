@@ -66,9 +66,7 @@ func TestFilterBuiltinFunctions(t *testing.T) {
 }
 
 func TestFilterCompareOperators(t *testing.T) {
-	doc := []any{
-		float64(1), float64(2), float64(3),
-	}
+	doc := []any{float64(1), float64(2), float64(3)}
 	reg := jpath.NewRegistry()
 
 	got, err := reg.Query("$[?@ < 2]", doc)

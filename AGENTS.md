@@ -68,7 +68,7 @@ For grouped declarations:
 - For plain structs, use values up to 32 bytes; use values at 33–64 bytes unless they are read through three or more functions in a chain; use pointers above 64 bytes. Use pointers whenever mutation or identity requires them. A pointer does not imply a heap allocation; check escape behavior when it matters.
 - Struct fields must make sense at the call site without reading the function body. Give adjacent same-type fields distinct, descriptive meanings.
 - Use named fields in struct literals. Positional struct literals are forbidden except for a single-field wrapper whose field name adds no information.
-- Keep a struct literal on one line if it fits. When it wraps, use one field per line.
+- A struct literal with two or more fields always wraps, one field per line, even when it fits. A single-field literal may stay on one line.
 
 ## Function And Method Ordering
 
@@ -105,7 +105,7 @@ For exported receiver types:
 
 ## Wrapping And Formatting
 
-- Wrap Go source to 80 columns max (tabs count as 4 columns).
+- Wrap Go source to 100 columns max (tabs count as 4 columns).
 - The width limit applies to Go comments as well as code, but not Markdown prose.
 - Keep signatures and calls on one line when they fit.
 - When wrapping is required, pack as many args per line as fit before wrapping.

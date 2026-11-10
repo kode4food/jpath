@@ -98,9 +98,7 @@ func TestLogicalOptimizationShortCircuit(t *testing.T) {
 }
 
 func TestCompositionCapturesFunctions(t *testing.T) {
-	selectors := []jpath.SelectorFunc{
-		jpath.SelectName("a"), jpath.SelectName("b"),
-	}
+	selectors := []jpath.SelectorFunc{jpath.SelectName("a"), jpath.SelectName("b")}
 	seg := jpath.ChildSegment(selectors...)
 	selectors[0] = jpath.SelectName("missing")
 	segments := []jpath.SegmentFunc{
@@ -289,9 +287,7 @@ func TestLiteralComparisonOptimization(t *testing.T) {
 	} {
 		doc = append(doc, map[string]any{"x": value})
 	}
-	operand := jpath.PathCurrent(
-		jpath.ComposePath(jpath.ChildSegment(jpath.SelectName("x"))),
-	)
+	operand := jpath.PathCurrent(jpath.ComposePath(jpath.ChildSegment(jpath.SelectName("x"))))
 	for _, op := range []struct {
 		name string
 		make func(jpath.FilterFunc, jpath.FilterFunc) jpath.FilterFunc
@@ -328,9 +324,7 @@ func TestLiteralComparisonOptimization(t *testing.T) {
 		calls++
 		return nil, false
 	})
-	for _, query := range []string{
-		"$[?missing() != null]", "$[?null != missing()]",
-	} {
+	for _, query := range []string{"$[?missing() != null]", "$[?null != missing()]"} {
 		if got := reg.MustQuery(query, []any{1}); len(got) != 1 {
 			t.Fatalf("Nothing compared as null: %s", query)
 		}
@@ -343,18 +337,9 @@ func TestLiteralComparisonOptimization(t *testing.T) {
 func TestNestedFactoringOptimization(t *testing.T) {
 	reg := jpath.NewRegistry()
 	for _, pair := range [][2]string{
-		{
-			"$[?((@.a && @.b) || (@.a && @.c)) || @.d]",
-			"$[?( @.a && (@.b || @.c)) || @.d]",
-		},
-		{
-			"$[?@.d || ((@.a && @.b) || (@.a && @.c))]",
-			"$[?@.d || (@.a && (@.b || @.c))]",
-		},
-		{
-			"$[?((@.a || @.b) && (@.a || @.c)) && @.d]",
-			"$[?(@.a || (@.b && @.c)) && @.d]",
-		},
+		{"$[?((@.a && @.b) || (@.a && @.c)) || @.d]", "$[?( @.a && (@.b || @.c)) || @.d]"},
+		{"$[?@.d || ((@.a && @.b) || (@.a && @.c))]", "$[?@.d || (@.a && (@.b || @.c))]"},
+		{"$[?((@.a || @.b) && (@.a || @.c)) && @.d]", "$[?(@.a || (@.b && @.c)) && @.d]"},
 	} {
 		ast := reg.MustParse(pair[0])
 		optimized := reg.MustCompile(ast)

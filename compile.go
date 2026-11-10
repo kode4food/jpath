@@ -37,9 +37,7 @@ func makePath(path *PathExpr, reg *Registry) (Path, error) {
 			end++
 		}
 		if end-i > 1 {
-			segments = append(
-				segments, makeSingularSegment(path.Segments[i:end]),
-			)
+			segments = append(segments, makeSingularSegment(path.Segments[i:end]))
 			i = end
 			continue
 		}

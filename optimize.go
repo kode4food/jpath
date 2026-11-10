@@ -112,20 +112,24 @@ func factorLogical(expr *BinaryExpr) *BinaryExpr {
 	if left.Op != inner || !reflect.DeepEqual(left.Left, right.Left) {
 		return expr
 	}
-	// A branch can mutate data read by the repeated factor. Exclude all
-	// function calls, including calls inside nested path filters
+	// A branch can mutate data read by the repeated factor. Exclude all function calls, including
+	// calls inside nested path filters
 	if !functionFree(expr) {
 		return expr
 	}
 	return &BinaryExpr{
-		Op:    inner,
-		Left:  left.Left,
-		Right: &BinaryExpr{Op: expr.Op, Left: left.Right, Right: right.Right},
+		Op:   inner,
+		Left: left.Left,
+		Right: &BinaryExpr{
+			Op:    expr.Op,
+			Left:  left.Right,
+			Right: right.Right,
+		},
 	}
 }
 
-// a nested path carries its own current node, so only this expression's own
-// anchors decide whether the enclosing filter reads `@`
+// a nested path carries its own current node, so only this expression's own anchors decide whether
+// the enclosing filter reads `@`
 func currentFree(expr FilterExpr) bool {
 	switch v := expr.(type) {
 	case *LiteralExpr:

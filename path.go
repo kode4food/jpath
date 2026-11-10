@@ -3,12 +3,11 @@ package jpath
 import "slices"
 
 type (
-	// Path is a compiled query function chain. Calling it executes the query
-	// against a JSON document
+	// Path is a compiled query function chain. Calling it executes the query against a JSON
+	// document
 	Path func(document any) []any
 
-	// SegmentFunc processes input nodes and returns output nodes for one
-	// segment step
+	// SegmentFunc processes input nodes and returns output nodes for one segment step
 	SegmentFunc func(in []any, root any) []any
 
 	// SelectorFunc appends selected output nodes for one input node

@@ -54,7 +54,10 @@ func Or(left, right FilterFunc) FilterFunc {
 func Eq(left, right FilterFunc) FilterFunc {
 	return func(ctx *FilterCtx) any {
 		return compareValues(
-			OpEq, comparison{left: left(ctx), right: right(ctx)},
+			OpEq, comparison{
+				left:  left(ctx),
+				right: right(ctx),
+			},
 		)
 	}
 }
@@ -63,7 +66,10 @@ func Eq(left, right FilterFunc) FilterFunc {
 func Ne(left, right FilterFunc) FilterFunc {
 	return func(ctx *FilterCtx) any {
 		return compareValues(
-			OpNe, comparison{left: left(ctx), right: right(ctx)},
+			OpNe, comparison{
+				left:  left(ctx),
+				right: right(ctx),
+			},
 		)
 	}
 }
@@ -72,7 +78,10 @@ func Ne(left, right FilterFunc) FilterFunc {
 func Lt(left, right FilterFunc) FilterFunc {
 	return func(ctx *FilterCtx) any {
 		return compareValues(
-			OpLt, comparison{left: left(ctx), right: right(ctx)},
+			OpLt, comparison{
+				left:  left(ctx),
+				right: right(ctx),
+			},
 		)
 	}
 }
@@ -81,7 +90,10 @@ func Lt(left, right FilterFunc) FilterFunc {
 func Le(left, right FilterFunc) FilterFunc {
 	return func(ctx *FilterCtx) any {
 		return compareValues(
-			OpLte, comparison{left: left(ctx), right: right(ctx)},
+			OpLte, comparison{
+				left:  left(ctx),
+				right: right(ctx),
+			},
 		)
 	}
 }
@@ -90,7 +102,10 @@ func Le(left, right FilterFunc) FilterFunc {
 func Gt(left, right FilterFunc) FilterFunc {
 	return func(ctx *FilterCtx) any {
 		return compareValues(
-			OpGt, comparison{left: left(ctx), right: right(ctx)},
+			OpGt, comparison{
+				left:  left(ctx),
+				right: right(ctx),
+			},
 		)
 	}
 }
@@ -99,7 +114,10 @@ func Gt(left, right FilterFunc) FilterFunc {
 func Ge(left, right FilterFunc) FilterFunc {
 	return func(ctx *FilterCtx) any {
 		return compareValues(
-			OpGte, comparison{left: left(ctx), right: right(ctx)},
+			OpGte, comparison{
+				left:  left(ctx),
+				right: right(ctx),
+			},
 		)
 	}
 }

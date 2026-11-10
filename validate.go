@@ -31,9 +31,7 @@ var (
 	ErrLiteralMustBeCompared = errors.New("literal must be compared")
 
 	// ErrCompRequiresSingularQuery is raised for non-singular comparisons
-	ErrCompRequiresSingularQuery = errors.New(
-		"comparison requires singular query",
-	)
+	ErrCompRequiresSingularQuery = errors.New("comparison requires singular query")
 
 	// ErrInvalidFuncArity is raised when function arity is invalid
 	ErrInvalidFuncArity = errors.New("invalid function arity")
@@ -42,19 +40,13 @@ var (
 	ErrFuncResultMustBeCompared = errors.New("function result must be compared")
 
 	// ErrFuncResultMustNotBeCompared is raised for prohibited comparisons
-	ErrFuncResultMustNotBeCompared = errors.New(
-		"function result must not be compared",
-	)
+	ErrFuncResultMustNotBeCompared = errors.New("function result must not be compared")
 
 	// ErrFuncRequiresSingularQuery is raised for singular-path requirements
-	ErrFuncRequiresSingularQuery = errors.New(
-		"function requires singular query",
-	)
+	ErrFuncRequiresSingularQuery = errors.New("function requires singular query")
 
 	// ErrFuncRequiresQueryArgument is raised for query-arg requirements
-	ErrFuncRequiresQueryArgument = errors.New(
-		"function requires query argument",
-	)
+	ErrFuncRequiresQueryArgument = errors.New("function requires query argument")
 )
 
 func validatePath(path *PathExpr, reg *Registry) error {
@@ -63,9 +55,7 @@ func validatePath(path *PathExpr, reg *Registry) error {
 			if sel.Kind != SelectorFilter {
 				continue
 			}
-			if err := validateExpr(
-				sel.Filter, contextLogical, false, reg,
-			); err != nil {
+			if err := validateExpr(sel.Filter, contextLogical, false, reg); err != nil {
 				return err
 			}
 		}
@@ -73,9 +63,7 @@ func validatePath(path *PathExpr, reg *Registry) error {
 	return nil
 }
 
-func validateExpr(
-	ex FilterExpr, ctx exprContext, inComparison bool, reg *Registry,
-) error {
+func validateExpr(ex FilterExpr, ctx exprContext, inComparison bool, reg *Registry) error {
 	switch v := ex.(type) {
 	case *LiteralExpr:
 		if ctx == contextLogical {
@@ -95,22 +83,16 @@ func validateExpr(
 	case *BinaryExpr:
 		switch v.Op {
 		case OpAnd, OpOr:
-			if err := validateExpr(
-				v.Left, contextLogical, false, reg,
-			); err != nil {
+			if err := validateExpr(v.Left, contextLogical, false, reg); err != nil {
 				return err
 			}
 			return validateExpr(v.Right, contextLogical, false, reg)
 
 		case OpEq, OpNe, OpLt, OpLte, OpGt, OpGte:
-			if err := validateExpr(
-				v.Left, contextComparisonOperand, true, reg,
-			); err != nil {
+			if err := validateExpr(v.Left, contextComparisonOperand, true, reg); err != nil {
 				return err
 			}
-			return validateExpr(
-				v.Right, contextComparisonOperand, true, reg,
-			)
+			return validateExpr(v.Right, contextComparisonOperand, true, reg)
 
 		default:
 			return fmt.Errorf("%w: %s", ErrUnknownOperator, v.Op)
@@ -121,9 +103,7 @@ func validateExpr(
 			return err
 		}
 		for _, a := range v.Args {
-			if err := validateExpr(
-				a, contextFunctionArg, false, reg,
-			); err != nil {
+			if err := validateExpr(a, contextFunctionArg, false, reg); err != nil {
 				return err
 			}
 		}
@@ -134,9 +114,7 @@ func validateExpr(
 	}
 }
 
-func validateFunction(
-	f *FuncExpr, ctx exprContext, inComparison bool, reg *Registry,
-) error {
+func validateFunction(f *FuncExpr, ctx exprContext, inComparison bool, reg *Registry) error {
 	def, ok := reg.function(f.Name)
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrUnknownFunc, f.Name)
@@ -177,9 +155,7 @@ func isSingularSegment(seg *SegmentExpr) bool {
 	return kind == SelectorName || kind == SelectorIndex
 }
 
-func validateMatchSearchFunction(
-	args []FilterExpr, _ FunctionUse, inComparison bool,
-) error {
+func validateMatchSearchFunction(args []FilterExpr, _ FunctionUse, inComparison bool) error {
 	if err := validateFunctionArity("match/search", args, 2); err != nil {
 		return err
 	}
@@ -205,17 +181,13 @@ func validateUnaryCompared(
 func validateUnaryComparedReq(
 	name string, args []FilterExpr, use FunctionUse, inComparison bool,
 ) error {
-	return validateUnaryCompared(
-		name, args, use, inComparison, validateQueryArg,
-	)
+	return validateUnaryCompared(name, args, use, inComparison, validateQueryArg)
 }
 
 func validateUnaryComparedSingular(
 	name string, args []FilterExpr, use FunctionUse, inComparison bool,
 ) error {
-	return validateUnaryCompared(
-		name, args, use, inComparison, validateSingularQueryArg,
-	)
+	return validateUnaryCompared(name, args, use, inComparison, validateSingularQueryArg)
 }
 
 func validateFunctionArity(name string, args []FilterExpr, want int) error {
@@ -225,9 +197,7 @@ func validateFunctionArity(name string, args []FilterExpr, want int) error {
 	return fmt.Errorf("%w: %s", ErrInvalidFuncArity, name)
 }
 
-func validateComparedUse(
-	name string, use FunctionUse, inComparison bool,
-) error {
+func validateComparedUse(name string, use FunctionUse, inComparison bool) error {
 	if inComparison || use != FunctionUseLogical {
 		return nil
 	}
@@ -238,9 +208,7 @@ func validateQueryArg(name string, arg FilterExpr) error {
 	if _, ok := arg.(*PathValueExpr); ok {
 		return nil
 	}
-	return fmt.Errorf(
-		"%w: %s requires query argument", ErrFuncRequiresQueryArgument, name,
-	)
+	return fmt.Errorf("%w: %s requires query argument", ErrFuncRequiresQueryArgument, name)
 }
 
 func validateSingularQueryArg(name string, arg FilterExpr) error {

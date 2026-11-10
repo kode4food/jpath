@@ -28,9 +28,7 @@ func TestDescendantTraversal(t *testing.T) {
 		"name":  "root",
 		"child": map[string]any{"name": "child"},
 	}
-	reference := jpath.ComposePath(jpath.DescendantSegment(
-		jpath.SelectName("name"),
-	))
+	reference := jpath.ComposePath(jpath.DescendantSegment(jpath.SelectName("name")))
 	assert.Equal(t, reference(doc), reg.MustQuery("$..name", doc))
 }
 
@@ -45,10 +43,7 @@ func TestDescendantMutationSnapshot(t *testing.T) {
 		args[0].(map[string]any)["a"] = nil
 		return true, true
 	})
-	assert.Equal(t,
-		[]any{children, child, true},
-		reg.MustQuery("$..[?mutate($)]", doc),
-	)
+	assert.Equal(t, []any{children, child, true}, reg.MustQuery("$..[?mutate($)]", doc))
 	assert.Equal(t, 3, calls)
 }
 
@@ -65,9 +60,18 @@ func BenchmarkTraversal(b *testing.B) {
 		name  string
 		query string
 	}{
-		{name: "singular-runs", query: "$.store.books[*].author.name"},
-		{name: "descendant-name", query: "$..name"},
-		{name: "descendant-wildcard", query: "$..*"},
+		{
+			name:  "singular-runs",
+			query: "$.store.books[*].author.name",
+		},
+		{
+			name:  "descendant-name",
+			query: "$..name",
+		},
+		{
+			name:  "descendant-wildcard",
+			query: "$..*",
+		},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
 			path := reg.MustCompile(reg.MustParse(tc.query))

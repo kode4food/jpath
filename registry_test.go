@@ -67,9 +67,7 @@ func TestRegistryQueryErrorWrapping(t *testing.T) {
 
 func TestRegistrySliceSpecializations(t *testing.T) {
 	reg := jpath.NewRegistry()
-	doc := []any{
-		float64(0), float64(1), float64(2), float64(3), float64(4),
-	}
+	doc := []any{float64(0), float64(1), float64(2), float64(3), float64(4)}
 
 	assertRegistryQuery(t, reg, "$[:-1]", doc, []any{
 		float64(0), float64(1), float64(2), float64(3),
@@ -77,9 +75,7 @@ func TestRegistrySliceSpecializations(t *testing.T) {
 	assertRegistryQuery(t, reg, "$[-2::-1]", doc, []any{
 		float64(3), float64(2), float64(1), float64(0),
 	})
-	assertRegistryQuery(t, reg, "$[:-3:-1]", doc, []any{
-		float64(4), float64(3),
-	})
+	assertRegistryQuery(t, reg, "$[:-3:-1]", doc, []any{float64(4), float64(3)})
 }
 
 func TestRegistryExtensionFunction(t *testing.T) {
@@ -101,10 +97,7 @@ func TestRegistryExtensionFunction(t *testing.T) {
 		return
 	}
 
-	got, err := reg.Query(
-		"$[?alwaysTrue(@)]",
-		[]any{float64(1), float64(2)},
-	)
+	got, err := reg.Query("$[?alwaysTrue(@)]", []any{float64(1), float64(2)})
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -302,9 +295,7 @@ func TestMustRegisterFunction(t *testing.T) {
 	})
 }
 
-func assertRegistryQuery(
-	t *testing.T, reg *jpath.Registry, query string, doc any, want []any,
-) {
+func assertRegistryQuery(t *testing.T, reg *jpath.Registry, query string, doc any, want []any) {
 	t.Helper()
 	got, err := reg.Query(query, doc)
 	if !assert.NoError(t, err) {

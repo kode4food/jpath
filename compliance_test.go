@@ -30,9 +30,7 @@ type (
 
 func TestComplianceSuite(t *testing.T) {
 	reg := jpath.NewRegistry()
-	path := filepath.Join(
-		"testdata", "jsonpath-compliance-test-suite", "cts.json",
-	)
+	path := filepath.Join("testdata", "jsonpath-compliance-test-suite", "cts.json")
 	if env := os.Getenv("JSONPATH_CTS_FILE"); env != "" {
 		path = env
 	}

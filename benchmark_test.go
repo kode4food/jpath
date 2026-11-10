@@ -71,9 +71,7 @@ func benchmarkCompileCases(
 
 func benchmarkLoadComplianceCases(b *testing.B) []complianceCase {
 	b.Helper()
-	suitePath := filepath.Join(
-		"testdata", "jsonpath-compliance-test-suite", "cts.json",
-	)
+	suitePath := filepath.Join("testdata", "jsonpath-compliance-test-suite", "cts.json")
 	if env := os.Getenv("JSONPATH_CTS_FILE"); env != "" {
 		suitePath = env
 	}

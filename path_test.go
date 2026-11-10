@@ -18,9 +18,7 @@ func TestPathSelectorMisses(t *testing.T) {
 	assertPathQuery(t, reg, "$[?@ == 1]", 1, []any{})
 }
 
-func assertPathQuery(
-	t *testing.T, reg *jpath.Registry, query string, doc any, want []any,
-) {
+func assertPathQuery(t *testing.T, reg *jpath.Registry, query string, doc any, want []any) {
 	t.Helper()
 	got, err := reg.Query(query, doc)
 	if !assert.NoError(t, err) {

@@ -77,9 +77,7 @@ func compileMatch(expr *FuncExpr, reg *Registry) (FilterFunc, error) {
 	}, nil
 }
 
-func compileLiteralMatch(
-	pattern string, expr *FuncExpr, reg *Registry,
-) (FilterFunc, error) {
+func compileLiteralMatch(pattern string, expr *FuncExpr, reg *Registry) (FilterFunc, error) {
 	text, err := compileOperand(expr.Args[0], reg)
 	if err != nil {
 		return nil, err
